@@ -32,29 +32,35 @@
 
 #define MAX_CELL_NUM		15
 #define BQ_I2C_ADDR			0x08
+#define CC_REG_TO_AMPS_FACTOR   0.00000844
+#define CC_VBAT_TO_VOLTS_FACTOR 0.001532
 
 // Private variables
 static i2c_bb_state  m_i2c;
-static volatile float m_v_cell[MAX_CELL_NUM];
-static volatile float measurement_temp[5];
-static volatile float i_in = 0;
-static volatile float v_bat = 0;
+static float m_v_cell[MAX_CELL_NUM];
 static volatile bool m_discharge_state[MAX_CELL_NUM] = {false};
-static volatile bool status_pin_discharge = false;
-static volatile bool status_pin_charge = false;
-static volatile bool status = false;
-static volatile float hw_shunt_res = 1.0;
 
-typedef struct {
+typedef struct __attribute__((packed)) {
 	i2c_bb_state m_i2c;
-	stm32_gpio_t *alert_gpio;
-	int alert_pin;
-	stm32_gpio_t *lrd_gpio;
+	bool mutex;
+	bool initialized;
+	uint8_t status;
     int lrd_pin;
 	float shunt_res;
 	float gain;
 	float offset;
+	float CC;
+	float temp[5];
+	float cell_mv[MAX_CELL_NUM];
+	float pack_mv;
+	bool m_discharge_state[MAX_CELL_NUM];
+	bool discharge_enabled;
+	bool charge_enabled;
 } bq76940_t;
+
+// The config is stored in the backup struct so that it is stored while sleeping.
+static volatile bq76940_t *bq76940 = (bq76940_t*)&backup.hw_config[0];
+
 /*
 static I2CConfig i2cfg1 = {
 	     STM32_TIMINGR_PRESC(5U)  |            // 48MHz/6 = 8MHz I2CCLK.
@@ -65,59 +71,49 @@ static I2CConfig i2cfg1 = {
 	    0,              // CR2
 };
 */
-static bq76940_t bq76940;
+
+
 
 // Threads
 static THD_WORKING_AREA(sample_thread_wa, 512);
 static THD_FUNCTION(sample_thread, arg);
 
 // Private functions
-void   print_state_SOC();
-int8_t gainRead(float *gain);
+float bq_read_CC(void);
+int8_t bq_read_gain(float *gain);
 int8_t current_discharge_protect_set(uint8_t time1,
 								     uint8_t short_circuit_current,
 									 uint8_t time2,
 									 uint8_t overcurrent);
-void toggle_pincharge();
-void status_load_removal_discharge();
-int8_t offsetRead(float *offset);
-void read_temp(volatile float *measurement_temp);
+void status_load_removal_discharge(void);
+int8_t bq_read_offsets(float *offset);
+void bq_read_temps(volatile float *temps);
 void iin_measure(float *value_iin);
 uint8_t write_reg(uint8_t reg, uint16_t val);
 static void read_cell_voltages(float *m_v_cell);
 static void read_v_batt(float *v_bat);
 uint8_t read_reg(uint8_t reg);
 uint8_t CRC8(unsigned char *ptr, unsigned char len,unsigned char key);
-void balance(volatile bool *m_discharge_state);
+void bq_balance_cells(volatile bool *m_discharge_state);
 uint8_t tripVoltage(float voltage);
 
 //Macros
-#define READ_ALERT()						palReadPad(bq76940.alert_gpio, bq76940.alert_pin)
-#define LOAD_REMOVAL_DISCHARGE()			palReadPad(bq76940.lrd_gpio, bq76940.lrd_pin)
+#define READ_ALERT()						palReadPad(BQ76940_ALERT_GPIO, BQ76940_ALERT_PIN)
+#define LOAD_REMOVAL_DISCHARGE()			palReadPad(BQ76940_LRD_GPIO, BQ76940_LRD_PIN)
 
-uint8_t bq76940_init(
-		stm32_gpio_t *sda_gpio, int sda_pin,
-		stm32_gpio_t *scl_gpio, int scl_pin,
-		stm32_gpio_t *alert_gpio, int alert_pin,
-		stm32_gpio_t *lrd_gpio, int lrd_pin,
-		float shunt_res) {
+uint8_t bq76940_init(void) {
+	LED_RED_DEBUG_ON();
 
-	palEnablePadEvent(GPIOA, 2U, PAL_EVENT_MODE_RISING_EDGE);
+	bq76940->shunt_res = HW_SHUNT_RES;
 
-	bq76940.alert_gpio = alert_gpio;
-	bq76940.alert_pin = alert_pin;
-	bq76940.lrd_gpio = lrd_gpio;
-	bq76940.lrd_pin = lrd_pin;
-	bq76940.shunt_res = shunt_res;
-
-	palSetPadMode(alert_gpio, alert_pin, PAL_MODE_INPUT);
-	palSetPadMode(lrd_gpio, lrd_pin, PAL_MODE_INPUT_PULLDOWN);
+	palSetPadMode(BQ76940_ALERT_GPIO, BQ76940_ALERT_PIN, PAL_MODE_INPUT);
+	palSetPadMode(BQ76940_LRD_GPIO, BQ76940_LRD_PIN, PAL_MODE_INPUT_PULLDOWN);
 
 	memset(&m_i2c, 0, sizeof(i2c_bb_state));
-	m_i2c.sda_gpio = sda_gpio;
-	m_i2c.sda_pin = sda_pin;
-	m_i2c.scl_gpio = scl_gpio;
-	m_i2c.scl_pin = scl_pin;
+	m_i2c.sda_gpio = BQ76940_SDA_GPIO;
+	m_i2c.sda_pin = BQ76940_SDA_PIN;
+	m_i2c.scl_gpio = BQ76940_SCL_GPIO;
+	m_i2c.scl_pin = BQ76940_SCL_PIN;
 
 	i2c_bb_init(&m_i2c);
 /*	i2cStart(&I2CD2, &i2cfg1);
@@ -133,57 +129,70 @@ uint8_t bq76940_init(
 	// make sure the bq is booted up--->set TS1 to 3.3V and back to VSS
 	// maybe set temp-mode for internal or external temp here
 
-	// enable ADC and thermistors
-	error |= write_reg(BQ_SYS_CTRL1, (ADC_EN | TS_ON));
-	
-	// check if ADC and thermistors is active
-	error |= read_reg(BQ_SYS_CTRL1) & (ADC_EN | TS_ON);
-	
-	// write 0x19 to CC_CFG according to datasheet page 39
-	error |= write_reg(BQ_CC_CFG, 0x19);
+	// these AFE registers should only be initialized once when the board is powered up
+	// the MCU undergoes a full reset every 10 seconds or so, check ram4 to see if the
+	// AFE was already initialized
+	if(1){//bq76940->initialized == false) {
+		// enable ADC and thermistors
+		error |= write_reg(BQ_SYS_CTRL1, (ADC_EN | TS_ON));
+		
+		// check if ADC and thermistors is active
+		error |= read_reg(BQ_SYS_CTRL1) & (ADC_EN | TS_ON);
+		
+		// write 0x19 to CC_CFG according to datasheet page 39
+		error |= write_reg(BQ_CC_CFG, 0x19);
 
-	error |= gainRead(&bq76940.gain);
-	error |= offsetRead(&bq76940.offset);
+		float gain;
+		float offset;
+		error |= bq_read_gain(&gain);
+		error |= bq_read_offsets(&offset);
 
-	//OverVoltage and UnderVoltage thresholds
-	write_reg(BQ_OV_TRIP, 0xC9);//tripVoltage(4.25));
-	write_reg(BQ_UV_TRIP, tripVoltage(2.80));
+bq76940->gain = gain;
+bq76940->offset = offset;
 
-	// Short Circuit Protection
-	current_discharge_protect_set(BQ_SCP_70us, BQ_SCP_22mV,5,5);
-	//error |= write_reg(BQ_PROTECT1, BQ_SCP_70us |  BQ_SCP_22mV);
-	
+		//OverVoltage and UnderVoltage thresholds
+		write_reg(BQ_OV_TRIP, 0xC9);//tripVoltage(4.25));
+		write_reg(BQ_UV_TRIP, tripVoltage(2.80));
 
-	// Over Current Protection at 200 A
-	error |= write_reg(BQ_PROTECT2, BQ_OCP_8ms | BQ_OCP_17mV);
-	
-	// Overvoltage and UnderVoltage delays
-	error |= write_reg(BQ_PROTECT3, BQ_UV_DELAY_1s | BQ_OV_DELAY_1s);
+		// Short Circuit Protection
+		current_discharge_protect_set(BQ_SCP_70us, BQ_SCP_22mV,5,5);
+		//error |= write_reg(BQ_PROTECT1, BQ_SCP_70us |  BQ_SCP_22mV);
 
-	// clear SYS-STAT for init
-	write_reg(BQ_SYS_STAT,0xFF);
+		// Over Current Protection at 200 A
+		error |= write_reg(BQ_PROTECT2, BQ_OCP_8ms | BQ_OCP_17mV);
+		
+		// Overvoltage and UnderVoltage delays
+		error |= write_reg(BQ_PROTECT3, BQ_UV_DELAY_1s | BQ_OV_DELAY_1s);
 
-	// doublecheck if bq is ready
-	if(read_reg(BQ_SYS_STAT) & SYS_STAT_DEVICE_XREADY){
-		// DEVICE_XREADY is set
-		// write 1 in DEVICE_XREADY to clear it
-		error |= write_reg(BQ_SYS_STAT, SYS_STAT_DEVICE_XREADY);
-		// check again
-		if(read_reg(BQ_SYS_STAT) & SYS_STAT_DEVICE_XREADY) return 1; // ERROR_XREADY;
+		// clear SYS-STAT for init
+		write_reg(BQ_SYS_STAT,0xFF);
+
+		// doublecheck if bq is ready
+		if(read_reg(BQ_SYS_STAT) & SYS_STAT_DEVICE_XREADY){
+			// DEVICE_XREADY is set
+			// write 1 in DEVICE_XREADY to clear it
+			error |= write_reg(BQ_SYS_STAT, SYS_STAT_DEVICE_XREADY);
+			// check again
+			if(read_reg(BQ_SYS_STAT) & SYS_STAT_DEVICE_XREADY) return 1; // ERROR_XREADY;
+		}
+
+		// enable countinous reading of the Coulomb Counter
+		error |= write_reg(BQ_SYS_CTRL2, CC_EN);	// sets ALERT at 250ms interval
+		
+		chThdSleepMilliseconds(10);
+		write_reg(BQ_SYS_STAT,0xFF);
+		chThdSleepMilliseconds(10);
+
+		bq_discharge_enable();
+		bq_charge_enable();
+
+		chThdSleepMilliseconds(40);
+		read_reg(BQ_SYS_STAT);
+		
+		// Mark the AFE as initialized for the next post-sleep resets
+		bq76940->initialized = true;
 	}
 
-	// enable countinous reading of the Coulomb Counter
-	error |= write_reg(BQ_SYS_CTRL2, CC_EN);	// sets ALERT at 250ms interval to high
-
-	chThdSleepMilliseconds(10);
-	write_reg(BQ_SYS_STAT,0xFF);
-	chThdSleepMilliseconds(10);
-
-	bq_discharge_enable();
-	bq_charge_enable();
-
-	chThdSleepMilliseconds(40);
-	read_reg(BQ_SYS_STAT);
 
 	/////////////////////////////////////////////////// provisional
     //if(status_pin_discharge){
@@ -198,9 +207,63 @@ uint8_t bq76940_init(
 	//}
     ////////////////////////////////////////////////////provisional
 
-	chThdCreateStatic(sample_thread_wa, sizeof(sample_thread_wa), HIGHPRIO, sample_thread, NULL);
+    chThdCreateStatic(sample_thread_wa, sizeof(sample_thread_wa), HIGHPRIO, sample_thread, NULL);
+
+	palEnablePadEvent(GPIOA, 2U, PAL_EVENT_MODE_RISING_EDGE);
+	
+	LED_RED_DEBUG_OFF();
 
 	return error; // 0 if successful
+}
+
+
+// This function will be executed when the Alert pin is driven to '1' by the AFE
+void bq76940_Alert_handler(void) {
+	LED_GREEN_DEBUG_ON();
+
+	// Read Status Register
+	uint8_t sys_stat = read_reg(BQ_SYS_STAT);
+	
+	// Clear Status Register. This will clear the Alert pin so its ready
+	// for the next event in 250ms
+	write_reg(BQ_SYS_STAT,0xFF);
+	
+	//
+	bq76940->CC = bq_read_CC();
+	
+	// Every 5 seconds make the long read
+	const int read_interval_seconds = 5;
+	static uint8_t i = 0;
+	if(i++ == read_interval_seconds * 4){
+		bq_read_temps(bq76940->temp);  	//read temperatures
+		read_cell_voltages(m_v_cell); 	//read cell voltages
+		read_v_batt(&bq76940->pack_mv);
+		chThdSleepMilliseconds(30);
+		bq_balance_cells(m_discharge_state);	//configure balancing bits over i2c
+		i = 0;
+	}
+	
+	// Report fault codes
+	if ( sys_stat & SYS_STAT_DEVICE_XREADY ) {
+		//handle error
+	}
+	if ( sys_stat & SYS_STAT_OVRD_ALERT ) {
+		//handle error
+	}
+	if ( sys_stat & SYS_STAT_UV ) {
+		bms_if_fault_report(FAULT_CODE_CELL_UNDERVOLTAGE);
+	}
+	if ( sys_stat & SYS_STAT_OV ) {
+		bms_if_fault_report(FAULT_CODE_CELL_OVERVOLTAGE);
+	}
+	if ( sys_stat & SYS_STAT_SCD ) {
+		bms_if_fault_report(FAULT_CODE_DISCHARGE_SHORT_CIRCUIT);
+	}
+	if ( sys_stat & SYS_STAT_OCD ) {
+		bms_if_fault_report(FAULT_CODE_DISCHARGE_OVERCURRENT);
+	}
+
+	LED_GREEN_DEBUG_OFF();
 }
 
 static THD_FUNCTION(sample_thread, arg) {
@@ -212,61 +275,12 @@ static THD_FUNCTION(sample_thread, arg) {
 
 		chThdSleepMilliseconds(20);
 
-		//provisional
-		//wake up BQ76940
-		write_reg(BQ_SYS_CTRL1, (ADC_EN | TS_ON));
-		//
-
 		//chThdSleepMilliseconds(250);
 		palWaitPadTimeout(GPIOA, 2U, TIME_INFINITE);
 
-
-		//provisional
-//		if ( READ_ALERT() ) {
-			//Clear Alert
-			uint8_t sys_stat = read_reg(BQ_SYS_STAT);
-			write_reg(BQ_SYS_STAT,0xFF);
-			
-			static uint8_t i = 0;
-			if(i++ == 10){
-				// time to read the cells
-				read_temp(measurement_temp);  	//read temperature
-				read_cell_voltages(m_v_cell); 	//read cell voltages
-				read_v_batt(&v_bat);
-				print_state_SOC();
-				i = 0;
-			}
-
-			//toggle_pin_charge(); //if only if the status of pin charge toggle
-			//status_load_removal_discharge();
-			chThdSleepMilliseconds(30);
-			balance(m_discharge_state);
-			iin_measure(&i_in);	
-
-
-			// Report fault codes
-			if ( sys_stat & SYS_STAT_DEVICE_XREADY ) {
-				//handle error
-			}
-			if ( sys_stat & SYS_STAT_OVRD_ALERT ) {
-				//handle error
-			}
-			if ( sys_stat & SYS_STAT_UV ) {
-				bms_if_fault_report(FAULT_CODE_CELL_UNDERVOLTAGE);
-			}
-			if ( sys_stat & SYS_STAT_OV ) {
-				bms_if_fault_report(FAULT_CODE_CELL_OVERVOLTAGE);
-			}
-			if ( sys_stat & SYS_STAT_SCD ) {
-				bms_if_fault_report(FAULT_CODE_DISCHARGE_SHORT_CIRCUIT);
-			}
-			if ( sys_stat & SYS_STAT_OCD ) {
-				bms_if_fault_report(FAULT_CODE_DISCHARGE_OVERCURRENT);
-			}
-
+		bq76940_Alert_handler();
+		
 		}
-	//}
-
 }
 
 uint8_t write_reg(uint8_t reg, uint16_t val) {
@@ -295,7 +309,7 @@ uint8_t read_reg(uint8_t reg){
  	return data;
 }
 
-int8_t gainRead(float *gain){
+int8_t bq_read_gain(float *gain){
 	int8_t error = 0;
 	uint8_t reg1 = read_reg(BQ_ADCGAIN1);
 	uint8_t reg2 = read_reg(BQ_ADCGAIN2);
@@ -312,18 +326,18 @@ int8_t gainRead(float *gain){
 // convert a voltage into the format used by the trip registers
 uint8_t tripVoltage(float threshold) {
 	uint16_t reg_val = (uint16_t)(threshold * 1000.0);
-	reg_val -= bq76940.offset;
+	reg_val -= bq76940->offset;
 	reg_val *= 1000;
-	reg_val /= bq76940.gain;
+	reg_val /= bq76940->gain;
 	reg_val++;
 	reg_val >>= 4;
 	return ((uint8_t)reg_val);
 }
 
-int8_t offsetRead(float *offset){
+int8_t bq_read_offsets(float *offset){
 	int8_t error = 0;
 	*offset = ((float)read_reg(BQ_ADCOFFSET) / 1000.0);
-
+//this will never be false
 	if( (*offset < 0x00) | (*offset > 0xFF) ) {
 		error = BQ76940_FAULT_OFFSET;
 	}
@@ -357,7 +371,7 @@ static void read_cell_voltages(float *m_v_cell) {
 	for (int i=0; i<MAX_CELL_NUM; i++) {
 		uint16_t VCx_lo = read_reg(BQ_VC1_LO + i * 2);
 		uint16_t VCx_hi = read_reg(BQ_VC1_HI + i * 2);
-		cell_voltages[i] = (((((float)(VCx_lo | (VCx_hi << 8))) * bq76940.gain) / 1e6)) + bq76940.offset;
+		cell_voltages[i] = (((((float)(VCx_lo | (VCx_hi << 8))) * bq76940->gain) / 1e6)) + bq76940->offset;
 	}
 	
 	// For 14s setups, handle the special case of cell 14 connected to VC15
@@ -375,20 +389,18 @@ float bq_last_cell_voltage(int cell) {
 }
 
 float bq_last_pack_voltage(void) {
-	return  v_bat;
+	return  bq76940->pack_mv;
 }
 
-void read_temp(volatile float *measurement_temp) {
+void bq_read_temps(volatile float *temps) {
 	for(int i = 0 ; i < 3 ; i++){
 		uint16_t BQ_TSx_hi = read_reg(BQ_TS1_HI + i * 2 );
 		uint16_t BQ_TSx_lo = read_reg(BQ_TS1_LO + i * 2);
-		float vtsx = (float)((BQ_TSx_hi << 8) | BQ_TSx_hi) * 0.000382;
+		float vtsx = (float)((BQ_TSx_hi << 8) | BQ_TSx_lo) * 0.000382;
 		float R_ts = ( vtsx * 1e4 ) / ( 3.3 - vtsx );
-		measurement_temp[i] = (1.0 / ((logf(R_ts / 10000.0) / 3455.0) + (1.0 / 298.15)) - 273.15);
+		temps[i] = (1.0 / ((logf(R_ts / 10000.0) / 3455.0) + (1.0 / 298.15)) - 273.15);
 	}
-
 	return;
-
 }
 
 float bq_get_temp(int sensor){
@@ -396,7 +408,16 @@ float bq_get_temp(int sensor){
 			return -1.0;
 	}
 
-	return measurement_temp[sensor];
+	return bq76940->temp[sensor];
+}
+
+// read Coloumb Counter. This should be called every 250ms by the Alert interrupt
+float bq_read_CC(void) {
+	uint16_t CC_hi = read_reg(BQ_CC_HI);
+	uint16_t CC_lo = read_reg(BQ_CC_LO);
+	int16_t CC_reg = (int16_t)(CC_lo | CC_hi << 8);
+	
+	return (float)CC_reg * CC_REG_TO_AMPS_FACTOR / bq76940->shunt_res;
 }
 
 void iin_measure(float *i_in ) {
@@ -404,53 +425,44 @@ void iin_measure(float *i_in ) {
 	uint16_t CC_lo = read_reg(BQ_CC_LO);
 	int16_t CC_reg = (int16_t)(CC_lo | CC_hi << 8);
 	
-	*(i_in) = (float)CC_reg * lsb_unit_regCC / bq76940.shunt_res;
+	*(i_in) = (float)CC_reg * CC_REG_TO_AMPS_FACTOR / bq76940->shunt_res;
 
 	return;
 }
 
 float bq_get_current(void){
-	return i_in;
+	return bq76940->CC;
 }
 
 void bq_discharge_enable(void){
-	status_pin_discharge = true;
-
 	uint8_t data = read_reg(BQ_SYS_CTRL2);
 	data = data | 0x02;
 	write_reg(BQ_SYS_CTRL2, data);
-
+	bq76940->discharge_enabled = true;
 	return;
 }
 
 void bq_discharge_disable(void){
-	status_pin_discharge = false;
-
 	uint8_t data = read_reg(BQ_SYS_CTRL2);
 	data = data & 0xFD;
 	write_reg(BQ_SYS_CTRL2, data);
-
+	bq76940->discharge_enabled = false;
 	return;
 }
 
 void bq_charge_enable(void){
-	status_pin_charge = true;
-
 	uint8_t data = read_reg(BQ_SYS_CTRL2);
 	data = data | 0x01;
 	write_reg(BQ_SYS_CTRL2, data);
-
+	bq76940->charge_enabled = true;
 	return;
 }
 
 void bq_charge_disable(void){
-	status_pin_charge = false;
-
 	uint8_t data = read_reg(BQ_SYS_CTRL2);
 	data = data & 0xFE;
 	write_reg(BQ_SYS_CTRL2, data);
-
-	return;
+	bq76940->charge_enabled = false;
 }
 
 void bq_set_dsc(int cell, bool set) {
@@ -469,8 +481,7 @@ bool bq_get_dsc(int cell) {
 	return m_discharge_state[cell];
 }
 
-void balance(volatile bool *m_discharge_state)
-{
+void bq_balance_cells(volatile bool *m_discharge_state) {
 	uint8_t buffer[3]= {0 ,0 ,0 };
 
 	/*
@@ -503,26 +514,7 @@ void balance(volatile bool *m_discharge_state)
 
 	return;
 }
-void toggle_pin_charge()
-{
 
-	if(!(status == status_pin_charge)){
-		status = status_pin_charge;
-
-		if(status_pin_charge){
-			uint8_t data = read_reg(BQ_SYS_CTRL2);
-			data = data | 0x01;
-			write_reg(BQ_SYS_CTRL2, data);
-		}
-		else{
-			uint8_t data = read_reg(BQ_SYS_CTRL2);
-			data = data & 0xE2;
-			write_reg(BQ_SYS_CTRL2, data);
-		}
-	}
-
-	return;
-}
 int8_t current_discharge_protect_set(uint8_t time1,
 									 uint8_t current_short_circuit,
 									 uint8_t time2,
@@ -547,7 +539,7 @@ int8_t current_discharge_protect_set(uint8_t time1,
 
 	write_reg(BQ_PROTECT1, ( time1 | (RSNS | current_short_circuit) ) );
 
-
+//this can't be right
 	if(overcurrent == (BQ_OCP_8mV | BQ_OCP_11mV | BQ_OCP_14mV | BQ_OCP_17mV | BQ_OCP_19mV |
 			          BQ_OCP_22mV | BQ_OCP_25mV | BQ_OCP_28mV | BQ_OCP_31mV | BQ_OCP_33mV |
 					  BQ_OCP_36mV | BQ_OCP_39mV | BQ_OCP_39mV | BQ_OCP_42mV | BQ_OCP_44mV |
@@ -564,30 +556,22 @@ int8_t current_discharge_protect_set(uint8_t time1,
 
 void status_load_removal_discharge()
 {
-
 	if(LOAD_REMOVAL_DISCHARGE()){
 		//FAULT!
 		bms_if_fault_report(FAULT_CODE_CELL_UNDERVOLTAGE);
-		commands_printf("SHORT CIRCUIT! LOAD CONNECT");
+		//commands_printf("SHORT CIRCUIT! LOAD CONNECT");
 		//time to wait (2min)
 		chThdSleepMilliseconds(6000);
 		//Can turn on the big mosfet?
 		if(!(LOAD_REMOVAL_DISCHARGE())) bq_discharge_enable();
 		}
-
 }
 
 static void read_v_batt(float *v_bat){
 	uint16_t BAT_hi = read_reg(BQ_BAT_HI);
 	uint16_t BAT_lo = read_reg(BQ_BAT_LO);
 
-	*v_bat = (float)(((uint16_t)(BAT_lo | BAT_hi << 8)) * lsb_unit_regVbat )-(14 * bq76940.offset);
-}
-
-void   print_state_SOC()
-{
-//Provisional!
- return 0;
+	*v_bat = (float)(((uint16_t)(BAT_lo | BAT_hi << 8)) * CC_VBAT_TO_VOLTS_FACTOR )-(14 * bq76940->offset);
 }
 
 void sleep_bq76940()

@@ -28,10 +28,8 @@
 #define HW_HAS_BQ76940
 
 // Macros
-#define HW_INIT_HOOK()				//bq76940_init(BQ76940_SDA_GPIO, BQ76940_SDA_PIN,\
-									//BQ76940_SCL_GPIO , BQ76940_SCL_PIN,\
-									//BQ76940_ALERT_GPIO , BQ76940_ALERT_PIN,\
-									//HW_SHUNT_RES);
+#define HW_INIT_HOOK()				
+                                    /*/bq76940_init();*/
 
 #define CHARGE_ENABLE()				bq_charge_enable(); bq_discharge_enable()
 #define CHARGE_DISABLE()			bq_charge_disable(); bq_discharge_disable();chThdSleepMilliseconds(10)
@@ -53,8 +51,19 @@
 #define AFE						bq76940
 
 // LEDs
-#define LINE_LED_RED			PAL_LINE(GPIOA, 0)
-#define LINE_LED_GREEN			PAL_LINE(GPIOA, 1)
+//#define LINE_LED_RED			PAL_LINE(GPIOA, 0)
+//#define LINE_LED_GREEN			PAL_LINE(GPIOA, 1)
+#define LINE_LED_RED			PAL_LINE(GPIOA, 8)
+#define LINE_LED_GREEN			PAL_LINE(GPIOA, 9)
+//#define LINE_LED_RED			
+//#define LINE_LED_GREEN			
+
+#define LED_RED_DEBUG         PAL_LINE(GPIOA, 0)
+#define LED_GREEN_DEBUG       PAL_LINE(GPIOA, 1)
+#define LED_RED_DEBUG_OFF()			palClearLine(LED_RED_DEBUG)
+#define LED_RED_DEBUG_ON()			palSetLine(LED_RED_DEBUG)
+#define LED_GREEN_DEBUG_OFF()		palClearLine(LED_GREEN_DEBUG)
+#define LED_GREEN_DEBUG_ON()			palSetLine(LED_GREEN_DEBUG)
 
 // BQ76200
 #define LINE_BQ_CHG_EN			PAL_LINE(GPIOB, 15)
@@ -88,6 +97,7 @@
 
 // Analog
 #ifdef BQ76940_SDA_GPIO
+#define EN_A					PAL_LINE(GPIOB, 1)
 #define EN_B					PAL_LINE(GPIOC, 2)
 #endif
 
@@ -101,10 +111,6 @@
 #define LINE_TEMP_2				PAL_LINE(GPIOC, 4)
 #define LINE_TEMP_3				PAL_LINE(GPIOC, 5)
 #define LINE_TEMP_4				PAL_LINE(GPIOF, 3)
-
-#ifdef BQ76940_SDA_GPIO
-#define EN_A					PAL_LINE(GPIOB, 1)
-#endif
 
 #ifdef HDC1080_SDA_GPIO
 #define LINE_TEMP_5				PAL_LINE(GPIOB, 1)
@@ -132,7 +138,7 @@
 #define ADC_CH_TEMP1			ADC_CHANNEL_IN1 // Leftmost edge
 #define ADC_CH_TEMP2			ADC_CHANNEL_IN13 // Center of cells
 #define ADC_CH_TEMP3			ADC_CHANNEL_IN14 // Lower right center
-#define ADC_CH_TEMP4			ADC_CHANNEL_IN15 // On wire
+#define ADC_CH_TEMP4			ADC_CHANNEL_IN15 // Connector temp
 #define ADC_CH_TEMP5			ADC_CHANNEL_IN16 // Top PCB center
 
 #endif /* HWCONF_HW_LUNA_BMS_H_ */
