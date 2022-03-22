@@ -90,11 +90,11 @@ static void go_to_sleep(void) {
 
 //////////////////////////////////////////////////////////////////////
 	//Set enable internal wakeup line
-	PWR->CR3 |= PWR_CR3_EIWUL;
+	//PWR->CR3 |= PWR_CR3_EIWUL;
 	//Enable Wakeup pin (PA2)
-	PWR->CR3 |= PWR_CR3_EWUP4;
+	//PWR->CR3 |= PWR_CR3_EWUP4;
 	//Select rising edge to wakeup
-	PWR->CR4 |= PWR_SR1_WUF4;
+	//PWR->CR4 |= PWR_SR1_WUF4;
 ///////////////////////////////////////////////////////////////////////
 	/* Enter STANDBY mode */
 	PWR->CR1 |= PWR_CR1_LPMS_STANDBY;

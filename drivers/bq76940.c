@@ -56,10 +56,16 @@ typedef struct __attribute__((packed)) {
 	bool m_discharge_state[MAX_CELL_NUM];
 	bool discharge_enabled;
 	bool charge_enabled;
+	fault_data	fault;
 } bq76940_t;
 
 // The config is stored in the backup struct so that it is stored while sleeping.
 static volatile bq76940_t *bq76940 = (bq76940_t*)&backup.hw_config[0];
+
+static void fault_data_cb(fault_data * const fault)
+{
+	//m_config->fault = *fault;
+}
 
 /*
 static I2CConfig i2cfg1 = {
@@ -102,6 +108,10 @@ uint8_t tripVoltage(float voltage);
 #define LOAD_REMOVAL_DISCHARGE()			palReadPad(BQ76940_LRD_GPIO, BQ76940_LRD_PIN)
 
 uint8_t bq76940_init(void) {
+	
+	palSetLineMode(LINE_LED_RED_DEBUG, PAL_MODE_OUTPUT_PUSHPULL);
+	palSetLineMode(LINE_LED_GREEN_DEBUG, PAL_MODE_OUTPUT_PUSHPULL);
+
 	LED_RED_DEBUG_ON();
 
 	bq76940->shunt_res = HW_SHUNT_RES;
@@ -131,24 +141,29 @@ uint8_t bq76940_init(void) {
 
 	// these AFE registers should only be initialized once when the board is powered up
 	// the MCU undergoes a full reset every 10 seconds or so, check ram4 to see if the
-	// AFE was already initialized
-	if(1){//bq76940->initialized == false) {
+	// AFE was already initialized / i can't get this to work yet /
+	
+	float gain;
+	float offset;
+	error |= bq_read_gain(&gain);
+	error |= bq_read_offsets(&offset);
+
+	bq76940->gain = gain;
+	bq76940->offset = offset;	// for some reason direct pointer reference crashes it
+	
+	// If SYS_CTRL1 and SYS_CTRL2 are 0x00 it means that the AFE is not configured. Lets configure it.
+	// if we want to change the AFE configuration we have to reset it to default values and then it will be
+	// rećonfigured on the next MCU reset.
+	if((read_reg(BQ_SYS_CTRL1) & 0x6F) == 0x00) {	//MSB could be '1' (LOAD_PRESENT), ADC_EN '1' in normal mode
+		if(read_reg(BQ_SYS_CTRL2) == 0x00) {
+	//if(1){//bq76940->initialized == false) {
+
 		// enable ADC and thermistors
 		error |= write_reg(BQ_SYS_CTRL1, (ADC_EN | TS_ON));
-		
-		// check if ADC and thermistors is active
-		error |= read_reg(BQ_SYS_CTRL1) & (ADC_EN | TS_ON);
 		
 		// write 0x19 to CC_CFG according to datasheet page 39
 		error |= write_reg(BQ_CC_CFG, 0x19);
 
-		float gain;
-		float offset;
-		error |= bq_read_gain(&gain);
-		error |= bq_read_offsets(&offset);
-
-bq76940->gain = gain;
-bq76940->offset = offset;
 
 		//OverVoltage and UnderVoltage thresholds
 		write_reg(BQ_OV_TRIP, 0xC9);//tripVoltage(4.25));
@@ -191,6 +206,7 @@ bq76940->offset = offset;
 		
 		// Mark the AFE as initialized for the next post-sleep resets
 		bq76940->initialized = true;
+		}
 	}
 
 
@@ -210,7 +226,11 @@ bq76940->offset = offset;
     chThdCreateStatic(sample_thread_wa, sizeof(sample_thread_wa), HIGHPRIO, sample_thread, NULL);
 
 	palEnablePadEvent(GPIOA, 2U, PAL_EVENT_MODE_RISING_EDGE);
-	
+
+	// Clear Status Register. This will clear the Alert pin so its ready
+	// for the next event in 250ms
+	write_reg(BQ_SYS_STAT,0xFF);
+
 	LED_RED_DEBUG_OFF();
 
 	return error; // 0 if successful
@@ -223,11 +243,7 @@ void bq76940_Alert_handler(void) {
 
 	// Read Status Register
 	uint8_t sys_stat = read_reg(BQ_SYS_STAT);
-	
-	// Clear Status Register. This will clear the Alert pin so its ready
-	// for the next event in 250ms
-	write_reg(BQ_SYS_STAT,0xFF);
-	
+
 	//
 	bq76940->CC = bq_read_CC();
 	
@@ -238,7 +254,7 @@ void bq76940_Alert_handler(void) {
 		bq_read_temps(bq76940->temp);  	//read temperatures
 		read_cell_voltages(m_v_cell); 	//read cell voltages
 		read_v_batt(&bq76940->pack_mv);
-		chThdSleepMilliseconds(30);
+		//chThdSleepMilliseconds(30);
 		bq_balance_cells(m_discharge_state);	//configure balancing bits over i2c
 		i = 0;
 	}
@@ -263,6 +279,10 @@ void bq76940_Alert_handler(void) {
 		bms_if_fault_report(FAULT_CODE_DISCHARGE_OVERCURRENT);
 	}
 
+	// Clear Status Register. This will clear the Alert pin so its ready
+	// for the next event in 250ms
+	write_reg(BQ_SYS_STAT,0xFF);
+
 	LED_GREEN_DEBUG_OFF();
 }
 
@@ -275,7 +295,6 @@ static THD_FUNCTION(sample_thread, arg) {
 
 		chThdSleepMilliseconds(20);
 
-		//chThdSleepMilliseconds(250);
 		palWaitPadTimeout(GPIOA, 2U, TIME_INFINITE);
 
 		bq76940_Alert_handler();
@@ -337,7 +356,7 @@ uint8_t tripVoltage(float threshold) {
 int8_t bq_read_offsets(float *offset){
 	int8_t error = 0;
 	*offset = ((float)read_reg(BQ_ADCOFFSET) / 1000.0);
-//this will never be false
+//this will never be false. its also comparing a float with a hex int?
 	if( (*offset < 0x00) | (*offset > 0xFF) ) {
 		error = BQ76940_FAULT_OFFSET;
 	}
@@ -494,7 +513,7 @@ void bq_balance_cells(volatile bool *m_discharge_state) {
 	buffer[0] = m_discharge_state[2] ? buffer[0] = 0x04 : buffer[0];
 	buffer[0] = m_discharge_state[3] ? buffer[0] = 0x08 : buffer[0];
 	buffer[0] = m_discharge_state[4] ? buffer[0] = 0x10 : buffer[0];
-	chThdSleepMilliseconds(30);
+	//chThdSleepMilliseconds(30);
 	write_reg(BQ_CELLBAL1, buffer[0]);
 
 	buffer[1] = m_discharge_state[5] ? buffer[1] = 0x01 : buffer[1];
@@ -502,14 +521,14 @@ void bq_balance_cells(volatile bool *m_discharge_state) {
 	buffer[1] = m_discharge_state[7] ? buffer[1] = 0x04 : buffer[1];
 	buffer[1] = m_discharge_state[8] ? buffer[1] = 0x08 : buffer[1];
 	buffer[1] = m_discharge_state[9] ? buffer[1] = 0x10 : buffer[1];
-	chThdSleepMilliseconds(30);
+	//chThdSleepMilliseconds(30);
 	write_reg(BQ_CELLBAL2, buffer[1]);
 
 	buffer[2] = m_discharge_state[10] ? buffer[2] = 0x01 : buffer[2];
 	buffer[2] = m_discharge_state[11] ? buffer[2] = 0x02 : buffer[2];
 	buffer[2] = m_discharge_state[12] ? buffer[2] = 0x0C : buffer[2];	// Special case for a 14s setup
 	buffer[2] = m_discharge_state[13] ? buffer[2] = 0x10 : buffer[2];
-	chThdSleepMilliseconds(30);
+	//chThdSleepMilliseconds(30);
 	write_reg(BQ_CELLBAL3, buffer[2]);
 
 	return;

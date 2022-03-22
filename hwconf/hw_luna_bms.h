@@ -58,12 +58,12 @@
 //#define LINE_LED_RED			
 //#define LINE_LED_GREEN			
 
-#define LED_RED_DEBUG         PAL_LINE(GPIOA, 0)
-#define LED_GREEN_DEBUG       PAL_LINE(GPIOA, 1)
-#define LED_RED_DEBUG_OFF()			palClearLine(LED_RED_DEBUG)
-#define LED_RED_DEBUG_ON()			palSetLine(LED_RED_DEBUG)
-#define LED_GREEN_DEBUG_OFF()		palClearLine(LED_GREEN_DEBUG)
-#define LED_GREEN_DEBUG_ON()			palSetLine(LED_GREEN_DEBUG)
+#define LINE_LED_RED_DEBUG         PAL_LINE(GPIOA, 0)
+#define LINE_LED_GREEN_DEBUG       PAL_LINE(GPIOA, 1)
+#define LED_RED_DEBUG_OFF()			palClearLine(LINE_LED_RED_DEBUG)
+#define LED_RED_DEBUG_ON()			palSetLine(LINE_LED_RED_DEBUG)
+#define LED_GREEN_DEBUG_OFF()		palClearLine(LINE_LED_GREEN_DEBUG)
+#define LED_GREEN_DEBUG_ON()		palSetLine(LINE_LED_GREEN_DEBUG)
 
 // BQ76200
 #define LINE_BQ_CHG_EN			PAL_LINE(GPIOB, 15)
@@ -116,7 +116,7 @@
 #define LINE_TEMP_5				PAL_LINE(GPIOB, 1)
 #endif
 
-#define ON_CANBUS				PAL_LINE(GPIOB, 7)
+#define CANBUS_EN				PAL_LINE(GPIOB, 7)
 
 #define LINE_TEMP_0_EN			PAL_LINE(GPIOB, 5)
 #define LINE_TEMP_1_EN			PAL_LINE(GPIOC, 8)
