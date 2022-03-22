@@ -67,16 +67,16 @@ static void fault_data_cb(fault_data * const fault)
 	//m_config->fault = *fault;
 }
 
-/*
+
 static I2CConfig i2cfg1 = {
-	     STM32_TIMINGR_PRESC(5U)  |            // 48MHz/6 = 8MHz I2CCLK.
-	     STM32_TIMINGR_SCLDEL(3U) | STM32_TIMINGR_SDADEL(3U) |
-	     STM32_TIMINGR_SCLH(3U)   | STM32_TIMINGR_SCLL(9U),
+	     STM32_TIMINGR_PRESC(4U)  |            // Uing 16MHZ HSI clock to source I2CCLK.
+	     STM32_TIMINGR_SCLDEL(4U) | STM32_TIMINGR_SDADEL(2U) |
+	     STM32_TIMINGR_SCLH(15U)   | STM32_TIMINGR_SCLL(13U),
 	                    // Just scale bits 28..31 if not 8MHz clock
 	    0,              // CR1
 	    0,              // CR2
 };
-*/
+
 
 
 
@@ -125,15 +125,12 @@ uint8_t bq76940_init(void) {
 	m_i2c.scl_gpio = BQ76940_SCL_GPIO;
 	m_i2c.scl_pin = BQ76940_SCL_PIN;
 
-	i2c_bb_init(&m_i2c);
-/*	i2cStart(&I2CD2, &i2cfg1);
-	palSetPadMode(GPIOB, 10, PAL_STM32_MODE_ALTERNATE
-							| PAL_MODE_OUTPUT_OPENDRAIN
-							| PAL_STM32_ALTERNATE(4) );
-	palSetPadMode(GPIOB, 11, PAL_STM32_MODE_ALTERNATE
-							| PAL_MODE_OUTPUT_OPENDRAIN
-							| PAL_STM32_ALTERNATE(4) );
-*/
+	palSetPadMode(GPIOB, 10, PAL_STM32_OTYPE_OPENDRAIN
+							| PAL_MODE_ALTERNATE(4) );
+	palSetPadMode(GPIOB, 11, PAL_STM32_OTYPE_OPENDRAIN
+							| PAL_MODE_ALTERNATE(4) );
+	i2cStart(&I2CD2, &i2cfg1);
+
 	uint8_t error = 0;
 
 	// make sure the bq is booted up--->set TS1 to 3.3V and back to VSS
@@ -156,7 +153,6 @@ uint8_t bq76940_init(void) {
 	// rećonfigured on the next MCU reset.
 	if((read_reg(BQ_SYS_CTRL1) & 0x6F) == 0x00) {	//MSB could be '1' (LOAD_PRESENT), ADC_EN '1' in normal mode
 		if(read_reg(BQ_SYS_CTRL2) == 0x00) {
-	//if(1){//bq76940->initialized == false) {
 
 		// enable ADC and thermistors
 		error |= write_reg(BQ_SYS_CTRL1, (ADC_EN | TS_ON));
@@ -315,16 +311,14 @@ uint8_t write_reg(uint8_t reg, uint16_t val) {
 	txbuf[1] = val;
 	uint8_t key = 0x7;
 	txbuf[2] = CRC8(buff, 3, key);
-	i2c_bb_tx_rx(&m_i2c, BQ_I2C_ADDR, txbuf, 3, 0, 0);
-	//i2cMasterTransmit(&I2CD2, BQ_I2C_ADDR, txbuf, 3, NULL, 0);
+	i2cMasterTransmit(&I2CD2, BQ_I2C_ADDR, txbuf, 3, NULL, 0);
 
 	return 0;
 }
 
 uint8_t read_reg(uint8_t reg){
 	uint8_t data;
- 	i2c_bb_tx_rx(&m_i2c, BQ_I2C_ADDR, &reg, 1, &data, 2);
-	//i2cMasterTransmit(&I2CD2, BQ_I2C_ADDR, &reg, 1, &data, 2);
+	i2cMasterTransmit(&I2CD2, BQ_I2C_ADDR, &reg, 1, &data, 2);
  	return data;
 }
 
