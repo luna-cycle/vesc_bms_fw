@@ -95,8 +95,8 @@ void terminal_process_string(char *str) {
 			commands_printf("%.8lx %4lu %4lu %9s %14s %lu (%.1f %%)",
 					(uint32_t)tp,
 					(uint32_t)tp->prio, (uint32_t)(tp->refs - 1),
-					states[tp->state], tp->name, (uint32_t)tp->time,
-					(double)(100.0 * (float)tp->time / (float)chVTGetSystemTimeX()));
+					states[tp->state], tp->name, (uint32_t)0,//tp->time,
+					(double)(100.0 * (float)0/*tp->time*/ / (float)chVTGetSystemTimeX()));
 			tp = chRegNextThread(tp);
 		} while (tp != NULL);
 		commands_printf(" ");
