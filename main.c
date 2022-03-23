@@ -148,14 +148,6 @@ int main(void) {
 
 	conf_general_apply_hw_limits((main_config_t*)&backup.config);
 
-	palSetLineMode(EN_A, PAL_MODE_OUTPUT_PUSHPULL);
-	palSetLineMode(EN_B, PAL_MODE_OUTPUT_PUSHPULL);
-	palSetLineMode(CANBUS_EN, PAL_MODE_OUTPUT_PUSHPULL);
-
-	LED_OFF(EN_A);
-	LED_OFF(EN_B);
-	LED_ON(CANBUS_EN);
-
 	palSetLineMode(LINE_LED_RED, PAL_MODE_OUTPUT_PUSHPULL);
 	palSetLineMode(LINE_LED_GREEN, PAL_MODE_OUTPUT_PUSHPULL);
 
@@ -186,7 +178,7 @@ int main(void) {
 #endif
 
 #ifdef BQ76940_SDA_GPIO
-	bq76940_init();
+	hw_luna_init();
 #endif
 
 #ifdef HW_UART_DEV

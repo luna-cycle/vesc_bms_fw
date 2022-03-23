@@ -423,7 +423,7 @@ float bms_if_get_temp(int sensor) {
 }
 
 float bms_if_get_temp_ic(void) {
-	return ltc_last_temp();
+	return HW_GET_TEMP_IC();
 }
 
 bool bms_if_is_balancing_cell(int cell) {

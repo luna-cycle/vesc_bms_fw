@@ -94,6 +94,10 @@
 #define HW_GET_TEMP(sensors)	pwr_get_temp(sensors)
 #endif
 
+#ifndef HW_GET_TEMP_IC
+#define HW_GET_TEMP_IC()	ltc_last_temp()
+#endif
+
 #ifndef HW_GET_BAL_TEMP
 #define HW_GET_BAL_TEMP()		bms_if_get_humidity_sensor_temp()
 #endif

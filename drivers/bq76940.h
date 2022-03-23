@@ -24,7 +24,7 @@
 #define NUM_REG			55
 #define ADC_EN			0x10
 #define ADC_DIS			0x00
-#define TS_ON			0x08
+#define TEMP_SEL			0x08
 #define CC_EN			0x40
 #define CC_DIS			0x00
 #define SYS_STAT_DEVICE_XREADY	0x20
@@ -183,6 +183,7 @@ bool bq_get_dsc(int cell);
 float bq_last_pack_voltage(void);
 float bq_last_cell_voltage(int cell);
 float bq_get_temp(int sensor);
+float bq_get_temp_ic(void);
 float bq_get_current(void);
 void bq_discharge_enable(void);
 void bq_discharge_disable(void);

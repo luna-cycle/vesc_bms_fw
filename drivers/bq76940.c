@@ -31,6 +31,7 @@
 #ifdef HW_HAS_BQ76940
 
 #define MAX_CELL_NUM		15
+#define MAX_TEMP_SENSORS_NUM	3
 #define BQ_I2C_ADDR			0x08
 #define CC_REG_TO_AMPS_FACTOR   0.00000844
 #define CC_VBAT_TO_VOLTS_FACTOR 0.001532
@@ -50,7 +51,8 @@ typedef struct __attribute__((packed)) {
 	float gain;
 	float offset;
 	float CC;
-	float temp[5];
+	float temp[MAX_TEMP_SENSORS_NUM];
+	float temp_ic;
 	float cell_mv[MAX_CELL_NUM];
 	float pack_mv;
 	bool m_discharge_state[MAX_CELL_NUM];
@@ -64,7 +66,7 @@ static volatile bq76940_t *bq76940 = (bq76940_t*)&backup.hw_config[0];
 
 static void fault_data_cb(fault_data * const fault)
 {
-	//m_config->fault = *fault;
+	bq76940->fault = *fault;
 }
 
 
@@ -94,6 +96,7 @@ int8_t current_discharge_protect_set(uint8_t time1,
 void status_load_removal_discharge(void);
 int8_t bq_read_offsets(float *offset);
 void bq_read_temps(volatile float *temps);
+float bq_read_temp_ic(void);
 void iin_measure(float *value_iin);
 uint8_t write_reg(uint8_t reg, uint16_t val);
 static void read_cell_voltages(float *m_v_cell);
@@ -155,7 +158,7 @@ uint8_t bq76940_init(void) {
 		if(read_reg(BQ_SYS_CTRL2) == 0x00) {
 
 		// enable ADC and thermistors
-		error |= write_reg(BQ_SYS_CTRL1, (ADC_EN | TS_ON));
+		error |= write_reg(BQ_SYS_CTRL1, (ADC_EN | TEMP_SEL));
 		
 		// write 0x19 to CC_CFG according to datasheet page 39
 		error |= write_reg(BQ_CC_CFG, 0x19);
@@ -178,15 +181,6 @@ uint8_t bq76940_init(void) {
 		// clear SYS-STAT for init
 		write_reg(BQ_SYS_STAT,0xFF);
 
-		// doublecheck if bq is ready
-		if(read_reg(BQ_SYS_STAT) & SYS_STAT_DEVICE_XREADY){
-			// DEVICE_XREADY is set
-			// write 1 in DEVICE_XREADY to clear it
-			error |= write_reg(BQ_SYS_STAT, SYS_STAT_DEVICE_XREADY);
-			// check again
-			if(read_reg(BQ_SYS_STAT) & SYS_STAT_DEVICE_XREADY) return 1; // ERROR_XREADY;
-		}
-
 		// enable countinous reading of the Coulomb Counter
 		error |= write_reg(BQ_SYS_CTRL2, CC_EN);	// sets ALERT at 250ms interval
 		
@@ -197,8 +191,8 @@ uint8_t bq76940_init(void) {
 		bq_discharge_enable();
 		bq_charge_enable();
 
-		chThdSleepMilliseconds(40);
-		read_reg(BQ_SYS_STAT);
+		//chThdSleepMilliseconds(40);
+		//read_reg(BQ_SYS_STAT);
 		
 		// Mark the AFE as initialized for the next post-sleep resets
 		bq76940->initialized = true;
@@ -243,18 +237,36 @@ void bq76940_Alert_handler(void) {
 	//
 	bq76940->CC = bq_read_CC();
 	
-	// Every 5 seconds make the long read
-	const int read_interval_seconds = 5;
+	// Every 1 second make the long read
 	static uint8_t i = 0;
-	if(i++ == read_interval_seconds * 4){
-		bq_read_temps(bq76940->temp);  	//read temperatures
+	if(i++ == 4){
 		read_cell_voltages(m_v_cell); 	//read cell voltages
 		read_v_batt(&bq76940->pack_mv);
 		//chThdSleepMilliseconds(30);
 		bq_balance_cells(m_discharge_state);	//configure balancing bits over i2c
 		i = 0;
 	}
-	
+
+	//read external temp for 2.5 sec, then internal temp for 2.5sec and repeat
+	static uint8_t temp_sensing_state = 1;
+	if(temp_sensing_state == 0) {
+		  	//read internal temperature
+			bq76940->temp_ic = bq_read_temp_ic();
+			//configure AFE so after 2 seconds the external temperature will become available
+			write_reg(BQ_SYS_CTRL1, (ADC_EN | TEMP_SEL));
+	}
+	if(temp_sensing_state == 10) {
+		  	//read external temperatures
+			bq_read_temps(bq76940->temp);
+			//configure AFE so after 2 seconds the internal temperature will become available
+			write_reg(BQ_SYS_CTRL1, ADC_EN);
+	}
+	temp_sensing_state++;
+
+	if(temp_sensing_state == 20) {
+		temp_sensing_state = 0;
+	}
+
 	// Report fault codes
 	if ( sys_stat & SYS_STAT_DEVICE_XREADY ) {
 		//handle error
@@ -405,8 +417,12 @@ float bq_last_pack_voltage(void) {
 	return  bq76940->pack_mv;
 }
 
+// BQ76940 updates the temperatur registers every 2 seconds
 void bq_read_temps(volatile float *temps) {
-	for(int i = 0 ; i < 3 ; i++){
+	// only update TS3, the others are unused in this particular hardware
+	// make sure TEMP_SEL bit has been set to 1 for at leat 2 seconds
+
+	for(int i = 2 ; i < 3 ; i++){
 		uint16_t BQ_TSx_hi = read_reg(BQ_TS1_HI + i * 2 );
 		uint16_t BQ_TSx_lo = read_reg(BQ_TS1_LO + i * 2);
 		float vtsx = (float)((BQ_TSx_hi << 8) | BQ_TSx_lo) * 0.000382;
@@ -416,12 +432,27 @@ void bq_read_temps(volatile float *temps) {
 	return;
 }
 
+float bq_read_temp_ic(void) {
+	//we are only reading TS2, but internal die temp is available for TS1, TS2 and TS3 dies.
+	// make sure TEMP_SEL bit has been set to 0 for at leat 2 seconds
+	uint16_t BQ_TSx_hi = read_reg(BQ_TS1_HI + 2);
+	uint16_t BQ_TSx_lo = read_reg(BQ_TS1_LO + 2);
+
+	float vtsx = (float)((BQ_TSx_hi << 8) | BQ_TSx_lo) * 0.000382;
+	float temp_die = 25.0 - ((vtsx - 1.2) / 0.0042);
+	return temp_die;
+}
+
 float bq_get_temp(int sensor){
 	if (sensor < 0 || sensor >= 5){
 			return -1.0;
 	}
 
 	return bq76940->temp[sensor];
+}
+
+float bq_get_temp_ic(void){
+	return bq76940->temp_ic;
 }
 
 // read Coloumb Counter. This should be called every 250ms by the Alert interrupt
@@ -589,7 +620,7 @@ static void read_v_batt(float *v_bat){
 
 void sleep_bq76940()
 {
-	write_reg(BQ_SYS_CTRL1, (ADC_DIS | TS_ON));
+	write_reg(BQ_SYS_CTRL1, (ADC_DIS | TEMP_SEL));
 	//write_reg(BQ_SYS_CTRL2, CC_DIS);
 	//Shutdown everything frontend
 	//write_reg(BQ_SYS_CTRL1, 0x01);

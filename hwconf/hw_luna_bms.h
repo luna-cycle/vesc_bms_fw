@@ -33,7 +33,8 @@
 
 #define CHARGE_ENABLE()				bq_charge_enable(); bq_discharge_enable()
 #define CHARGE_DISABLE()			bq_charge_disable(); bq_discharge_disable();chThdSleepMilliseconds(10)
-#define HW_GET_TEMP(sensors)		bq_get_temp(sensors)
+#define HW_GET_TEMP(sensors)		hw_luna_get_temp(sensors)
+#define HW_GET_TEMP_IC()            bq_get_temp_ic()
 #define HW_SET_DSC(cell, set)		bq_set_dsc(cell, set)
 #define HW_GET_DSC(cell)			bq_get_dsc(cell)
 #define HW_LAST_CELL_VOLTAGE(cell)	bq_last_cell_voltage(cell)
@@ -42,6 +43,7 @@
 #define HW_GET_I_IN_AFE()			bq_get_current()
 
 // Settings
+#define HW_ADC_TEMP_SENSORS		8
 #define HW_CELLS_SERIES			14
 #define HW_SHUNT_RES			(0.0005)
 #define HW_SHUNT_AMP_GAIN		(20.0)
@@ -96,49 +98,57 @@
 #define BQ76940_LRD_PIN			0
 
 // Analog
-#ifdef BQ76940_SDA_GPIO
-#define EN_A					PAL_LINE(GPIOB, 1)
-#define EN_B					PAL_LINE(GPIOC, 2)
-#endif
 
 #ifdef HDC1080_SDA_GPIO
 #define LINE_V_CHARGE			PAL_LINE(GPIOC, 2)
 #endif
 
+//LINE_CURRENT not used in this hardware
 #define LINE_CURRENT			PAL_LINE(GPIOC, 3)
-#define LINE_TEMP_0				PAL_LINE(GPIOC, 1)
-#define LINE_TEMP_1				PAL_LINE(GPIOC, 0)
-#define LINE_TEMP_2				PAL_LINE(GPIOC, 4)
-#define LINE_TEMP_3				PAL_LINE(GPIOC, 5)
-#define LINE_TEMP_4				PAL_LINE(GPIOF, 3)
+#define LINE_TEMP_0				PAL_LINE(GPIOA, 3)
+#define LINE_TEMP_1				PAL_LINE(GPIOA, 4)
+#define LINE_TEMP_2				PAL_LINE(GPIOA, 5)
+#define LINE_TEMP_3				PAL_LINE(GPIOA, 6)
+#define LINE_TEMP_4				PAL_LINE(GPIOA, 7)
+#define LINE_TEMP_5				PAL_LINE(GPIOC, 1)
+#define LINE_TEMP_6 			PAL_LINE(GPIOC, 3)
 
-#ifdef HDC1080_SDA_GPIO
-#define LINE_TEMP_5				PAL_LINE(GPIOB, 1)
-#endif
+//CANbus
+#define LINE_CAN_EN				PAL_LINE(GPIOB, 7)
+#define HW_CAN_ON()				palClearLine(LINE_CAN_EN)
+#define HW_CAN_OFF()			palSetLine(LINE_CAN_EN)
 
-#define CANBUS_EN				PAL_LINE(GPIOB, 7)
+// Enable thermistor bank A
+#define LINE_TEMP_0_EN			PAL_LINE(GPIOB, 1)
 
-#define LINE_TEMP_0_EN			PAL_LINE(GPIOB, 5)
-#define LINE_TEMP_1_EN			PAL_LINE(GPIOC, 8)
-#define LINE_TEMP_2_EN			PAL_LINE(GPIOC, 9)
-#define LINE_TEMP_3_EN			PAL_LINE(GPIOC, 10)
-#define LINE_TEMP_4_EN			PAL_LINE(GPIOC, 11)
-#define LINE_TEMP_5_EN			PAL_LINE(GPIOB, 2)
+// Enable thermistor bank B. All repeadted until we make it more abstract
+#define LINE_TEMP_1_EN			PAL_LINE(GPIOC, 2)
+#define LINE_TEMP_2_EN			PAL_LINE(GPIOC, 2)
+#define LINE_TEMP_3_EN			PAL_LINE(GPIOC, 2)
+#define LINE_TEMP_4_EN			PAL_LINE(GPIOC, 2)
+#define LINE_TEMP_5_EN			PAL_LINE(GPIOC, 2)
+#define LINE_TEMP_6_EN			PAL_LINE(GPIOC, 2)
 
-#define NTC_RES(adc)			(10000.0 / ((4095.0 / (float)adc) - 1.0))
+#define NTC_RES(adc)		(10000.0 * (float)adc / ( 4095.0 - (float)adc))
+//#define NTC_RES(adc)			(10000.0 / ((4095.0 / (float)adc) - 1.0))
 #define NTC_TEMP(adc)			(1.0 / ((logf(NTC_RES(adc) / 10000.0) / 3380.0) + (1.0 / 298.15)) - 273.15)
 
 // TODO: Take highest of all temp sensors
-#define HW_TEMP_CELLS_MAX()		bms_if_get_temp(2)
+#define HW_TEMP_CELLS_MAX()		hw_luna_get_cell_temp_max()
 
 // ADC Channels
 #define ADC_CH_V_CHARGE			ADC_CHANNEL_IN3
 #define ADC_CH_CURRENT			ADC_CHANNEL_IN4
-#define ADC_CH_TEMP0			ADC_CHANNEL_IN2 // Next to STM32
-#define ADC_CH_TEMP1			ADC_CHANNEL_IN1 // Leftmost edge
-#define ADC_CH_TEMP2			ADC_CHANNEL_IN13 // Center of cells
-#define ADC_CH_TEMP3			ADC_CHANNEL_IN14 // Lower right center
-#define ADC_CH_TEMP4			ADC_CHANNEL_IN15 // Connector temp
-#define ADC_CH_TEMP5			ADC_CHANNEL_IN16 // Top PCB center
+#define ADC_CH_TEMP0			ADC_CHANNEL_IN8  // Cell temp 1
+#define ADC_CH_TEMP1			ADC_CHANNEL_IN9  // Cell temp 2
+#define ADC_CH_TEMP2			ADC_CHANNEL_IN10 // Cell temp 3
+#define ADC_CH_TEMP3			ADC_CHANNEL_IN11 // Cell temp 4
+#define ADC_CH_TEMP4			ADC_CHANNEL_IN12 // Negative Connector terminal temp
+#define ADC_CH_TEMP5			ADC_CHANNEL_IN2  // Positive Connector terminal temp
+#define ADC_CH_TEMP6			ADC_CHANNEL_IN4  // MOSFET temp
+
+void hw_luna_init(void);
+float hw_luna_get_temp(int sensors);
+float hw_luna_get_cell_temp_max(void);
 
 #endif /* HWCONF_HW_LUNA_BMS_H_ */
