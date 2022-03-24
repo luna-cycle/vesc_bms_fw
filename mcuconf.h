@@ -55,7 +55,7 @@
 #define STM32_PLLN_VALUE                    80
 #define STM32_PLLP_VALUE                    7
 #define STM32_PLLQ_VALUE                    6
-#define STM32_PLLR_VALUE                    4
+#define STM32_PLLR_VALUE                    8   //4:80MHz     8: 40MHz
 #define STM32_HPRE                          STM32_HPRE_DIV1
 #define STM32_PPRE1                         STM32_PPRE1_DIV1
 #define STM32_PPRE2                         STM32_PPRE2_DIV1
