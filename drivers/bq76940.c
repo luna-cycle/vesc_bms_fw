@@ -221,10 +221,6 @@ uint8_t bq76940_init(void) {
 	// for the next event in 250ms
 	write_reg(BQ_SYS_STAT,0xFF);
 
-	// clear pack_mv as a workaround for the bms_if charge_ok() returning true too early in the init and
-	// forcing the cpu to stay away for 2 seconds after every standby
-	bq76940->pack_mv = 0.0;
-	
 	LED_RED_DEBUG_OFF();
 
 	return error; // 0 if successful

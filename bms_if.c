@@ -90,7 +90,7 @@ static THD_FUNCTION(charge_thd, p) {
 		if (m_is_charging && HW_TEMP_CELLS_MAX() >= backup.config.t_charge_max) {
 			bms_if_fault_report(FAULT_CODE_CHARGE_OVERTEMP);
 		}
-
+/*
 		if (charge_ok() && m_charge_allowed && !m_was_charge_overcurrent) {
 			if (!m_is_charging) {
 				sleep_reset();
@@ -104,7 +104,7 @@ static THD_FUNCTION(charge_thd, p) {
 			m_is_charging = false;
 			//CHARGE_DISABLE();
 		}
-
+*/
 		chThdSleepMilliseconds(10);
 /*
 		if (m_i_in_filter > -0.5 && m_is_charging && !HW_CHARGER_DETECTED()) {
