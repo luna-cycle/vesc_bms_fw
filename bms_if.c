@@ -406,12 +406,16 @@ float bms_if_get_v_cell_max(void) {
 }
 
 float bms_if_get_v_tot(void) {
+#ifndef HW_GET_V_TOTAL
 	float ret = 0.0;
 	for (int i = backup.config.cell_first_index;i <
 	(backup.config.cell_num + backup.config.cell_first_index);i++) {
 		ret += bms_if_get_v_cell(i);
 	}
 	return ret;
+#else
+	return HW_GET_V_TOTAL();
+#endif
 }
 
 float bms_if_get_v_charge(void) {

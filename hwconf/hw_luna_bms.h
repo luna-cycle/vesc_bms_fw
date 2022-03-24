@@ -38,6 +38,7 @@
 #define HW_SET_DSC(cell, set)		bq_set_dsc(cell, set)
 #define HW_GET_DSC(cell)			bq_get_dsc(cell)
 #define HW_LAST_CELL_VOLTAGE(cell)	bq_last_cell_voltage(cell)
+#define HW_GET_V_TOTAL()			bq_last_pack_voltage()
 #define HW_GET_V_CHARGE()			bq_last_pack_voltage()	//until we implement charge voltage measurement in hw
 #define HW_GET_I_IN()				bq_get_current()		//this hw wont read current using the mcu adc for the forseeable future
 #define HW_GET_I_IN_AFE()			bq_get_current()
