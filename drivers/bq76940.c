@@ -356,13 +356,12 @@ int8_t bq_read_gain(float *gain){
 
 // convert a voltage into the format used by the trip registers
 uint8_t tripVoltage(float threshold) {
-	uint32_t reg_val = (uint16_t)(threshold * 1000.0);  //0x0C1C -> 3.1V
+	uint32_t reg_val = (uint16_t)(threshold * 1000.0);
 	reg_val -= bq76940->offset;
-	reg_val /= bq76940->gain;
     reg_val *= 1000;
+	reg_val /= bq76940->gain;
     reg_val >>= 4;
     reg_val &= 0x00FF;
-    
 	return ((uint8_t)reg_val);
 }
 
