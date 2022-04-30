@@ -60,6 +60,8 @@ typedef struct __attribute__((packed)) {
 	bool m_discharge_state[MAX_CELL_NUM];
 	bool discharge_enabled;
 	bool charge_enabled;
+	bool disconnection_request;
+	bool disconnection_request_completed;
 	fault_data	fault;
 } bq76940_t;
 
@@ -107,6 +109,11 @@ uint8_t read_reg(uint8_t reg);
 uint8_t CRC8(unsigned char *ptr, unsigned char len,unsigned char key);
 void bq_balance_cells(volatile bool *m_discharge_state);
 uint8_t tripVoltage(float voltage);
+void bq_disconnect_battery(bool disconnect);
+void bq_discharge_enable(void);
+void bq_discharge_disable(void);
+void bq_charge_enable(void);
+void bq_charge_disable(void);
 
 //Macros
 #define READ_ALERT()						palReadPad(BQ76940_ALERT_GPIO, BQ76940_ALERT_PIN)
@@ -199,7 +206,9 @@ uint8_t bq76940_init(void) {
 
 		//chThdSleepMilliseconds(40);
 		//read_reg(BQ_SYS_STAT);
-		
+
+		bq76940->disconnection_request_completed = true;
+
 		// Mark the AFE as initialized for the next post-sleep resets
 		bq76940->initialized = true;
 		}
@@ -219,13 +228,13 @@ uint8_t bq76940_init(void) {
 	//}
     ////////////////////////////////////////////////////provisional
 
-    chThdCreateStatic(sample_thread_wa, sizeof(sample_thread_wa), HIGHPRIO, sample_thread, NULL);
-
-	palEnablePadEvent(GPIOA, 2U, PAL_EVENT_MODE_RISING_EDGE);
-
 	// Clear Status Register. This will clear the Alert pin so its ready
 	// for the next event in 250ms
 	write_reg(BQ_SYS_STAT,0xFF);
+
+	chThdCreateStatic(sample_thread_wa, sizeof(sample_thread_wa), HIGHPRIO, sample_thread, NULL);
+
+	palEnablePadEvent(GPIOA, 2U, PAL_EVENT_MODE_RISING_EDGE);
 
 	LED_RED_DEBUG_OFF();
 
@@ -242,7 +251,22 @@ void bq76940_Alert_handler(void) {
 
 	//
 	bq76940->CC = bq_read_CC();
+
+	// this logic could be simplified if we read the CHG/DSC status register on startup
+	// force first request. The following request will be transfered over i2c only if the bits are not already set
+	static int disconnect_request_done_once = false;
+	static int last_disconnect_request = false;	//N/A
 	
+	if(bq76940->disconnection_request_completed == false ) {
+		if( (disconnect_request_done_once == false) || (bq76940->disconnection_request != last_disconnect_request) ) { 
+			bq_disconnect_battery(bq76940->disconnection_request);
+			bq76940->disconnection_request_completed = true;
+			last_disconnect_request = bq76940->disconnection_request;
+			//CHG/DSC now in a known state
+			disconnect_request_done_once = true;
+		}
+	}
+
 	// Every 1 second make the long read
 	static uint8_t i = 0;
 	if(i++ == 4){
@@ -482,6 +506,21 @@ void iin_measure(float *i_in ) {
 
 float bq_get_current(void){
 	return bq76940->CC;
+}
+
+void bq_request_disconnect_battery(bool flag) {
+	bq76940->disconnection_request = flag;
+	bq76940->disconnection_request_completed = false;
+}
+
+void bq_disconnect_battery(bool disconnect) {
+	if(disconnect) {
+		bq_discharge_disable();
+		bq_charge_disable();
+	} else {
+		bq_discharge_enable();
+		bq_charge_enable();
+	}	
 }
 
 void bq_discharge_enable(void){

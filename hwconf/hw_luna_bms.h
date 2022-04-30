@@ -31,8 +31,8 @@
 #define HW_INIT_HOOK()				
                                     /*/bq76940_init();*/
 
-#define CHARGE_ENABLE()				bq_charge_enable(); bq_discharge_enable()
-#define CHARGE_DISABLE()			bq_charge_disable(); bq_discharge_disable();chThdSleepMilliseconds(10)
+#define CHARGE_ENABLE()				bq_request_disconnect_battery(false)
+#define CHARGE_DISABLE()			bq_request_disconnect_battery(true)
 #define HW_GET_TEMP(sensors)		hw_luna_get_temp(sensors)
 #define HW_GET_TEMP_IC()            bq_get_temp_ic()
 #define HW_SET_DSC(cell, set)		bq_set_dsc(cell, set)
