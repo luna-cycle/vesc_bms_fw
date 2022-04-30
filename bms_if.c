@@ -53,17 +53,29 @@ static bool m_soc_filter_init_done = false;
 // Threads
 static THD_WORKING_AREA(if_thd_wa, 2048);
 static THD_FUNCTION(if_thd, p);
+#ifdef HW_ONE_MOSFET_CONTROL
 static THD_WORKING_AREA(charge_thd_wa, 2048);
 static THD_FUNCTION(charge_thd, p);
+#endif
+#ifdef HW_BACK_TO_BACK_MOSFETS
+static THD_WORKING_AREA(btb_charge_thd_wa, 2048);
+static THD_FUNCTION(btb_charge_thd, p);
+#endif
 static THD_WORKING_AREA(balance_thd_wa, 2048);
 static THD_FUNCTION(balance_thd, p);
 
 void bms_if_init(void) {
 	chThdCreateStatic(if_thd_wa, sizeof(if_thd_wa), NORMALPRIO, if_thd, 0);
+#ifdef  HW_ONE_MOSFET_CONTROL    
 	chThdCreateStatic(charge_thd_wa, sizeof(charge_thd_wa), NORMALPRIO, charge_thd, 0);
-	chThdCreateStatic(balance_thd_wa, sizeof(balance_thd_wa), NORMALPRIO, balance_thd, 0);
+#endif
+#ifdef HW_BACK_TO_BACK_MOSFETS    
+    chThdCreateStatic(btb_charge_thd_wa, sizeof(btb_charge_thd_wa), NORMALPRIO, btb_charge_thd, 0);
+#endif	
+    chThdCreateStatic(balance_thd_wa, sizeof(balance_thd_wa), NORMALPRIO, balance_thd, 0);
 }
 
+#ifdef HW_ONE_MOSFET_CONTROL
 static bool charge_ok(void) {
 
 	float max = m_is_charging ? backup.config.vc_charge_end : backup.config.vc_charge_start;
@@ -90,7 +102,7 @@ static THD_FUNCTION(charge_thd, p) {
 		if (m_is_charging && HW_TEMP_CELLS_MAX() >= backup.config.t_charge_max) {
 			bms_if_fault_report(FAULT_CODE_CHARGE_OVERTEMP);
 		}
-/*
+
 		if (charge_ok() && m_charge_allowed && !m_was_charge_overcurrent) {
 			if (!m_is_charging) {
 				sleep_reset();
@@ -102,11 +114,11 @@ static THD_FUNCTION(charge_thd, p) {
 			}
 		} else {
 			m_is_charging = false;
-			//CHARGE_DISABLE();
+			CHARGE_DISABLE();
 		}
-*/
+
 		chThdSleepMilliseconds(10);
-/*
+
 		if (m_i_in_filter > -0.5 && m_is_charging && !HW_CHARGER_DETECTED()) {
 			no_charge_cnt++;
 
@@ -119,7 +131,7 @@ static THD_FUNCTION(charge_thd, p) {
 		} else {
 			no_charge_cnt = 0;
 		}
-/*
+
 		if (m_is_charging) {
 			if (fabsf(m_i_in_filter) > backup.config.max_charge_current) {
 				m_was_charge_overcurrent = true;
@@ -142,11 +154,20 @@ static THD_FUNCTION(charge_thd, p) {
 			flash_helper_store_backup_data();
 		}
 		charger_connected_last = HW_GET_V_CHARGE() > backup.config.v_charge_detect;
-	*/
+	
 	}
 
 }
+#endif
 
+#ifdef HW_BACK_TO_BACK_MOSFETS
+static THD_FUNCTION(btb_charge_thd, p) {
+	(void)p;
+	chRegSetThreadName("bq_charge");
+    
+    
+}    
+#endif
 static THD_FUNCTION(balance_thd, p) {
 	(void)p;
 	chRegSetThreadName("Balance");

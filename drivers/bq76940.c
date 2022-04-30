@@ -30,6 +30,7 @@
 
 #ifdef HW_HAS_BQ76940
 
+#define HW_BACK_TO_BACK_MOSFETS
 #define MAX_CELL_NUM		15
 #define MAX_TEMP_SENSORS_NUM	3
 #define BQ_I2C_ADDR			0x08
@@ -40,6 +41,7 @@
 static i2c_bb_state  m_i2c;
 static float m_v_cell[MAX_CELL_NUM];
 static volatile bool m_discharge_state[MAX_CELL_NUM] = {false};
+
 
 typedef struct __attribute__((packed)) {
 	i2c_bb_state m_i2c;
@@ -111,7 +113,9 @@ uint8_t tripVoltage(float voltage);
 #define LOAD_REMOVAL_DISCHARGE()			palReadPad(BQ76940_LRD_GPIO, BQ76940_LRD_PIN)
 
 uint8_t bq76940_init(void) {
-	
+    float gain;
+    float offset;
+    
 	palSetLineMode(LINE_LED_RED_DEBUG, PAL_MODE_OUTPUT_PUSHPULL);
 	palSetLineMode(LINE_LED_GREEN_DEBUG, PAL_MODE_OUTPUT_PUSHPULL);
 
@@ -143,17 +147,19 @@ uint8_t bq76940_init(void) {
 	// the MCU undergoes a full reset every 10 seconds or so, check ram4 to see if the
 	// AFE was already initialized / i can't get this to work yet /
 	
-	float gain;
-	float offset;
 	error |= bq_read_gain(&gain);
 	error |= bq_read_offsets(&offset);
 
 	bq76940->gain = gain;
 	bq76940->offset = offset;	// for some reason direct pointer reference crashes it
-	
 	// If SYS_CTRL1 and SYS_CTRL2 are 0x00 it means that the AFE is not configured. Lets configure it.
 	// if we want to change the AFE configuration we have to reset it to default values and then it will be
 	// rećonfigured on the next MCU reset.
+	
+	//OverVoltage and UnderVoltage thresholds
+    write_reg(BQ_OV_TRIP, tripVoltage(4.25));
+    write_reg(BQ_UV_TRIP, tripVoltage(2.8));
+	
 	if((read_reg(BQ_SYS_CTRL1) & 0x6F) == 0x00) {	//MSB could be '1' (LOAD_PRESENT), ADC_EN '1' in normal mode
 		if(read_reg(BQ_SYS_CTRL2) == 0x00) {
 
@@ -165,8 +171,8 @@ uint8_t bq76940_init(void) {
 
 
 		//OverVoltage and UnderVoltage thresholds
-		write_reg(BQ_OV_TRIP, 0xC9);//tripVoltage(4.25));
-		write_reg(BQ_UV_TRIP, tripVoltage(2.80));
+		//write_reg(BQ_OV_TRIP, 0xC9);//tripVoltage(4.25));
+		//write_reg(BQ_UV_TRIP, 0x00);//tripVoltage(2.80)
 
 		// Short Circuit Protection
 		current_discharge_protect_set(BQ_SCP_70us, BQ_SCP_22mV,5,5);
@@ -230,7 +236,7 @@ uint8_t bq76940_init(void) {
 // This function will be executed when the Alert pin is driven to '1' by the AFE
 void bq76940_Alert_handler(void) {
 	LED_GREEN_DEBUG_ON();
-
+    	
 	// Read Status Register
 	uint8_t sys_stat = read_reg(BQ_SYS_STAT);
 
@@ -350,12 +356,13 @@ int8_t bq_read_gain(float *gain){
 
 // convert a voltage into the format used by the trip registers
 uint8_t tripVoltage(float threshold) {
-	uint16_t reg_val = (uint16_t)(threshold * 1000.0);
+	uint32_t reg_val = (uint16_t)(threshold * 1000.0);  //0x0C1C -> 3.1V
 	reg_val -= bq76940->offset;
-	reg_val *= 1000;
 	reg_val /= bq76940->gain;
-	reg_val++;
-	reg_val >>= 4;
+    reg_val *= 1000;
+    reg_val >>= 4;
+    reg_val &= 0x00FF;
+    
 	return ((uint8_t)reg_val);
 }
 
