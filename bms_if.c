@@ -164,8 +164,48 @@ static THD_FUNCTION(charge_thd, p) {
 static THD_FUNCTION(btb_charge_thd, p) {
 	(void)p;
 	chRegSetThreadName("bq_charge");
-    
-    
+	systime_t last_fault_time = 0.0;
+	uint32_t connection_retries = 0;
+	
+	for (;;) {
+		// disconnect battery if any cell temp is above max limit
+		if(HW_TEMP_CELLS_MAX() > backup.config.t_charge_max) {
+			PACK_DISCONNECT();
+			bms_if_fault_report(FAULT_CODE_CELL_OVERTEMP);
+			last_fault_time = chVTGetSystemTimeX();
+		}
+		
+		// disconnect battery if any cell temp is below min limit
+		if(HW_TEMP_CELLS_MIN() < backup.config.t_charge_min && m_is_charging) {
+			PACK_DISCONNECT();
+			bms_if_fault_report(FAULT_CODE_CELL_UNDERTEMP);
+			last_fault_time = chVTGetSystemTimeX();
+		}
+		
+		// disconnect battery if any cell temp is below min limit (TODO: separate threshold for charging and discharging min temp)
+
+		// disconnect battery in case of overload. for example 90A avg for 7 seconds like surron does
+
+		// handle frontend-specific protections like cell OV, cell UV, OCP and SHP
+
+		// if a battery disconnection happened, wait 30 seconds until re-arming it
+		
+		// if more than 5 attempts at re-connection failed, stop trying and wait for a charger connection
+		if(UTILS_AGE_S(last_fault_time) > 30.0 && connection_retries <= 5) {
+			PACK_CONNECT();
+			connection_retries ++;
+		}
+		
+		// clear counter when charger connected
+		//if(m_is_charging) {
+		//	connection_retries = 0;
+		//}
+
+		// when battery charger disconnects, the MCU will start resetting (STDBY). Good time to store relevant data in flash:
+		//flash_helper_store_backup_data();
+		
+		chThdSleepMilliseconds(10);
+	}
 }    
 #endif
 static THD_FUNCTION(balance_thd, p) {

@@ -30,7 +30,8 @@
 // Macros
 #define HW_INIT_HOOK()				
                                     /*/bq76940_init();*/
-
+#define PACK_CONNECT()				bq_request_disconnect_battery(true)
+#define PACK_DISCONNECT()			bq_request_disconnect_battery(false)
 #define CHARGE_ENABLE()				bq_request_disconnect_battery(false)
 #define CHARGE_DISABLE()			bq_request_disconnect_battery(true)
 #define HW_GET_TEMP(sensors)		hw_luna_get_temp(sensors)
