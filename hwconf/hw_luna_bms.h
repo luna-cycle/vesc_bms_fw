@@ -26,7 +26,7 @@
 
 // HW-specific
 #define HW_HAS_BQ76940
-
+#define HW_BACK_TO_BACK_MOSFETS
 // Macros
 #define HW_INIT_HOOK()				
                                     /*/bq76940_init();*/

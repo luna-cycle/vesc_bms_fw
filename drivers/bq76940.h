@@ -187,5 +187,6 @@ float bq_get_temp_ic(void);
 float bq_get_current(void);
 void bq_request_disconnect_battery(bool flag);
 void sleep_bq76940(void);
+void shut_down_bq76940(void);
 
 #endif /* BQ76940_H_ */

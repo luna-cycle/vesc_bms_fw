@@ -30,7 +30,6 @@
 
 #ifdef HW_HAS_BQ76940
 
-#define HW_BACK_TO_BACK_MOSFETS
 #define MAX_CELL_NUM		15
 #define MAX_TEMP_SENSORS_NUM	3
 #define BQ_I2C_ADDR			0x08
@@ -56,6 +55,7 @@ typedef struct __attribute__((packed)) {
 	float temp[MAX_TEMP_SENSORS_NUM];
 	float temp_ic;
 	float cell_mv[MAX_CELL_NUM];
+    uint32_t    padding;
 	float pack_mv;
 	bool m_discharge_state[MAX_CELL_NUM];
 	bool discharge_enabled;
@@ -272,6 +272,7 @@ void bq76940_Alert_handler(void) {
 	if(i++ == 4){
 		read_cell_voltages(m_v_cell); 	//read cell voltages
 		read_v_batt(&bq76940->pack_mv);
+        //if(bq76940->pack_mv < 2.7) shut_down_bq76940(); //Protect the battery
 		//chThdSleepMilliseconds(30);
 		bq_balance_cells(m_discharge_state);	//configure balancing bits over i2c
 		i = 0;
@@ -659,17 +660,20 @@ void status_load_removal_discharge()
 static void read_v_batt(float *v_bat){
 	uint16_t BAT_hi = read_reg(BQ_BAT_HI);
 	uint16_t BAT_lo = read_reg(BQ_BAT_LO);
-
-	*v_bat = (float)(((uint16_t)(BAT_lo | BAT_hi << 8)) * CC_VBAT_TO_VOLTS_FACTOR )-(14 * bq76940->offset);
+	
+    *v_bat = (float)(((uint16_t)(BAT_lo | BAT_hi << 8)) * CC_VBAT_TO_VOLTS_FACTOR )-(14 * bq76940->offset);
 }
 
 void sleep_bq76940()
 {
 	write_reg(BQ_SYS_CTRL1, (ADC_DIS | TEMP_SEL));
 	//write_reg(BQ_SYS_CTRL2, CC_DIS);
-	//Shutdown everything frontend
-	//write_reg(BQ_SYS_CTRL1, 0x01);
-	//write_reg(BQ_SYS_CTRL1, 0x02);
+}
 
+void shut_down_bq76940()
+{
+    //Shutdown everything frontend
+    write_reg(BQ_SYS_CTRL1, 0x01);
+	write_reg(BQ_SYS_CTRL1, 0x02);
 }
 #endif

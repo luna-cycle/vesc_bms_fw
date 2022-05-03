@@ -79,7 +79,7 @@ void bms_if_init(void) {
 static bool charge_ok(void) {
 
 	float max = m_is_charging ? backup.config.vc_charge_end : backup.config.vc_charge_start;
-	/*commands_printf("v_charge_detect: %f", backup.config.v_charge_detect);
+	commands_printf("v_charge_detect: %f", backup.config.v_charge_detect);
 	commands_printf("HW_GET_CHARGE: %f", HW_GET_V_CHARGE());
 	commands_printf("m_voltage_cell_min: %f", m_voltage_cell_min);
 	commands_printf("charge_min: %f", backup.config.vc_charge_min);
@@ -87,9 +87,9 @@ static bool charge_ok(void) {
 	commands_printf("max: %f", max);*/
 	return  HW_GET_V_CHARGE() > backup.config.v_charge_detect; // HW_GET_V_CHARGE is Battery Voltage
 			m_voltage_cell_min > backup.config.vc_charge_min &&
-			m_voltage_cell_max < max;// &&
-			//HW_TEMP_CELLS_MAX() < backup.config.t_charge_max &&
-			//HW_TEMP_CELLS_MAX() > backup.config.t_charge_min;*/
+			m_voltage_cell_max < max &&
+			HW_TEMP_CELLS_MAX() < backup.config.t_charge_max &&
+			HW_TEMP_CELLS_MAX() > backup.config.t_charge_min;*/
 }
 
 static THD_FUNCTION(charge_thd, p) {
@@ -99,7 +99,8 @@ static THD_FUNCTION(charge_thd, p) {
 	int no_charge_cnt = 0;
 
 	for (;;) {
-		if (m_is_charging && HW_TEMP_CELLS_MAX() >= backup.config.t_charge_max) {
+
+        if (m_is_charging && HW_TEMP_CELLS_MAX() >= backup.config.t_charge_max) {
 			bms_if_fault_report(FAULT_CODE_CHARGE_OVERTEMP);
 		}
 
@@ -164,7 +165,9 @@ static THD_FUNCTION(charge_thd, p) {
 static THD_FUNCTION(btb_charge_thd, p) {
 	(void)p;
 	chRegSetThreadName("bq_charge");
-	systime_t last_fault_time = 0.0;
+    
+    
+/*	systime_t last_fault_time = 0.0;
 	uint32_t connection_retries = 0;
 	
 	for (;;) {
@@ -206,6 +209,7 @@ static THD_FUNCTION(btb_charge_thd, p) {
 		
 		chThdSleepMilliseconds(10);
 	}
+*/	
 }    
 #endif
 static THD_FUNCTION(balance_thd, p) {
