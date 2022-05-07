@@ -80,7 +80,7 @@
  *          this value.
  */
 #if !defined(CH_CFG_ST_TIMEDELTA)
-#define CH_CFG_ST_TIMEDELTA                 0
+#define CH_CFG_ST_TIMEDELTA                 2
 #endif
 
 /** @} */
@@ -572,7 +572,7 @@
  *          tickless mode.
  */
 #if !defined(CH_DBG_THREADS_PROFILING)
-#define CH_DBG_THREADS_PROFILING            TRUE
+#define CH_DBG_THREADS_PROFILING            FALSE
 #endif
 
 /** @} */
