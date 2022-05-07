@@ -30,7 +30,6 @@
 
 #ifdef HW_HAS_BQ76940
 
-#define HW_BACK_TO_BACK_MOSFETS
 #define MAX_CELL_NUM		15
 #define MAX_TEMP_SENSORS_NUM	3
 #define BQ_I2C_ADDR			0x08
@@ -56,6 +55,7 @@ typedef struct __attribute__((packed)) {
 	float temp[MAX_TEMP_SENSORS_NUM];
 	float temp_ic;
 	float cell_mv[MAX_CELL_NUM];
+    uint32_t    padding;
 	float pack_mv;
 	bool m_discharge_state[MAX_CELL_NUM];
 	bool discharge_enabled;
@@ -257,26 +257,29 @@ void bq76940_Alert_handler(void) {
 	static int disconnect_request_done_once = false;
 	static int last_disconnect_request = false;	//N/A
 	
+    bq_discharge_enable();
+    bq_charge_enable();
+/*
 	if(bq76940->disconnection_request_completed == false ) {
-		if( (disconnect_request_done_once == false) || (bq76940->disconnection_request != last_disconnect_request) ) { 
-			bq_disconnect_battery(bq76940->disconnection_request);
+        if( (disconnect_request_done_once == false) || (bq76940->disconnection_request != last_disconnect_request) ) { 
+            bq_disconnect_battery(bq76940->disconnection_request);
 			bq76940->disconnection_request_completed = true;
 			last_disconnect_request = bq76940->disconnection_request;
-			//CHG/DSC now in a known state
+            //CHG/DSC now in a known state
 			disconnect_request_done_once = true;
 		}
 	}
-
+*/
 	// Every 1 second make the long read
 	static uint8_t i = 0;
 	if(i++ == 4){
 		read_cell_voltages(m_v_cell); 	//read cell voltages
 		read_v_batt(&bq76940->pack_mv);
-		//chThdSleepMilliseconds(30);
 		bq_balance_cells(m_discharge_state);	//configure balancing bits over i2c
 		i = 0;
+        
 	}
-
+	
 	//read external temp for 2.5 sec, then internal temp for 2.5sec and repeat
 	static uint8_t temp_sensing_state = 1;
 	if(temp_sensing_state == 0) {
@@ -322,6 +325,7 @@ void bq76940_Alert_handler(void) {
 	write_reg(BQ_SYS_STAT,0xFF);
 
 	LED_GREEN_DEBUG_OFF();
+    
 }
 
 static THD_FUNCTION(sample_thread, arg) {
@@ -336,8 +340,8 @@ static THD_FUNCTION(sample_thread, arg) {
 		palWaitPadTimeout(GPIOA, 2U, TIME_INFINITE);
 
 		bq76940_Alert_handler();
-		
-		}
+        
+    }
 }
 
 uint8_t write_reg(uint8_t reg, uint16_t val) {
@@ -659,17 +663,21 @@ void status_load_removal_discharge()
 static void read_v_batt(float *v_bat){
 	uint16_t BAT_hi = read_reg(BQ_BAT_HI);
 	uint16_t BAT_lo = read_reg(BQ_BAT_LO);
-
-	*v_bat = (float)(((uint16_t)(BAT_lo | BAT_hi << 8)) * CC_VBAT_TO_VOLTS_FACTOR )-(14 * bq76940->offset);
+	
+    *v_bat = (float)(((uint16_t)(BAT_lo | BAT_hi << 8)) * CC_VBAT_TO_VOLTS_FACTOR )-(14 * bq76940->offset);
 }
 
 void sleep_bq76940()
 {
 	write_reg(BQ_SYS_CTRL1, (ADC_DIS | TEMP_SEL));
 	//write_reg(BQ_SYS_CTRL2, CC_DIS);
-	//Shutdown everything frontend
-	//write_reg(BQ_SYS_CTRL1, 0x01);
-	//write_reg(BQ_SYS_CTRL1, 0x02);
+}
 
+void bq_shutdown_bq76940()
+{
+    //Shutdown everything frontend
+    write_reg(BQ_SYS_CTRL1, 0x00);
+    write_reg(BQ_SYS_CTRL1, 0x01);
+	write_reg(BQ_SYS_CTRL1, 0x02);
 }
 #endif

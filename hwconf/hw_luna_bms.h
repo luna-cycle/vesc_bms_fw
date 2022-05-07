@@ -26,7 +26,7 @@
 
 // HW-specific
 #define HW_HAS_BQ76940
-
+#define HW_BACK_TO_BACK_MOSFETS
 // Macros
 #define HW_INIT_HOOK()				
                                     /*/bq76940_init();*/
@@ -43,6 +43,7 @@
 #define HW_GET_V_CHARGE()			bq_last_pack_voltage()	//until we implement charge voltage measurement in hw
 #define HW_GET_I_IN()				bq_get_current()		//this hw wont read current using the mcu adc for the forseeable future
 #define HW_GET_I_IN_AFE()			bq_get_current()
+//#define HW_SHUTDOWN_AFE()           bq_shutdown_bq76940()
 
 // Settings
 #define HW_ADC_TEMP_SENSORS		8
