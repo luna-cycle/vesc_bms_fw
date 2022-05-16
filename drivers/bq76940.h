@@ -42,11 +42,11 @@
 
 #define BQ_SCP_22mV		0x00
 #define BQ_SCP_33mV 	0x01
-//#define BQ_SCP_44mV     0x02
+#define BQ_SCP_44mV     0x02
 #define BQ_SCP_56mV     0x03
-//#define BQ_SCP_67mV     0x04
+#define BQ_SCP_67mV     0x04
 #define BQ_SCP_78mV     0x05
-//#define BQ_SCP_89mV     0x06
+#define BQ_SCP_89mV     0x06
 #define BQ_SCP_100mV    0x07
 #define BQ_SCP_44mV		0x00
 #define BQ_SCP_67mV		0x01
@@ -83,13 +83,13 @@
 #define BQ_OCP_44mV		0x0D
 #define BQ_OCP_47mV		0x0E
 #define BQ_OCP_50mV		0x0F
-//#define BQ_OCP_17mV		0x00
-//#define BQ_OCP_22mV		0x01
-//#define BQ_OCP_28mV		0x02
-//#define BQ_OCP_33mV		0x03
-//#define BQ_OCP_39mV		0x04
-//#define BQ_OCP_44mV		0x05
-//#define BQ_OCP_50mV		0x06
+#define BQ_OCP_17mV		0x00
+#define BQ_OCP_22mV		0x01
+#define BQ_OCP_28mV		0x02
+#define BQ_OCP_33mV		0x03
+#define BQ_OCP_39mV		0x04
+#define BQ_OCP_44mV		0x05
+#define BQ_OCP_50mV		0x06
 #define BQ_OCP_56mV		0x07
 #define BQ_OCP_61mV		0x08
 #define BQ_OCP_67mV		0x09

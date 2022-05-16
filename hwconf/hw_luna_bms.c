@@ -28,6 +28,7 @@ static void terminal_cmd_set_initial_assist_level(int argc, const char **argv);
 void hw_luna_init(void){
     bq76940_init();
 	terminal_register_command_callback("shipmode", "Shipmode = turn off bq 76940", 0, terminal_cmd_set_initial_assist_level);	
+//    terminal_register_command_callback("Level trip", "Shunt Resistors", 0, terminal_cmd_set_initial_assist_level);	
 }
 
 float hw_luna_get_cell_temp_max(void) {

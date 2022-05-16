@@ -166,27 +166,28 @@ uint8_t bq76940_init(void) {
 	//OverVoltage and UnderVoltage thresholds
     write_reg(BQ_OV_TRIP, tripVoltage(4.25));
     write_reg(BQ_UV_TRIP, tripVoltage(2.8));
+    // Short Circuit Protection    
+    current_discharge_protect_set(BQ_SCP_70us, BQ_SCP_22mV,BQ_OCP_8ms,BQ_OCP_8mV);  
+	write_reg(BQ_PROTECT1, BQ_SCP_70us |  BQ_SCP_22mV);
+	write_reg(BQ_PROTECT2, BQ_OCP_8ms | BQ_OCP_42mV);
 	
-	if((read_reg(BQ_SYS_CTRL1) & 0x6F) == 0x00) {	//MSB could be '1' (LOAD_PRESENT), ADC_EN '1' in normal mode
+	if((read_reg(BQ_SYS_CTRL1) & 0x08) == 0x00) {	//MSB could be '1' (LOAD_PRESENT), ADC_EN '1' in normal mode
 		if(read_reg(BQ_SYS_CTRL2) == 0x00) {
 
 		// enable ADC and thermistors
 		error |= write_reg(BQ_SYS_CTRL1, (ADC_EN | TEMP_SEL));
 		
-		// write 0x19 to CC_CFG according to datasheet page 39
+        // write 0x19 to CC_CFG according to datasheet page 39
 		error |= write_reg(BQ_CC_CFG, 0x19);
-
-
-		//OverVoltage and UnderVoltage thresholds
+		
+        //OverVoltage and UnderVoltage thresholds
 		//write_reg(BQ_OV_TRIP, 0xC9);//tripVoltage(4.25));
-		//write_reg(BQ_UV_TRIP, 0x00);//tripVoltage(2.80)
 
+        //write_reg(BQ_UV_TRIP, 0x00);//tripVoltage(2.80)
 		// Short Circuit Protection
-		current_discharge_protect_set(BQ_SCP_70us, BQ_SCP_22mV,5,5);
-		//error |= write_reg(BQ_PROTECT1, BQ_SCP_70us |  BQ_SCP_22mV);
-
+        error |= write_reg(BQ_PROTECT1, BQ_SCP_70us |  BQ_SCP_22mV);
 		// Over Current Protection at 200 A
-		error |= write_reg(BQ_PROTECT2, BQ_OCP_8ms | BQ_OCP_17mV);
+		error |= write_reg(BQ_PROTECT2, BQ_OCP_8ms | BQ_OCP_8mV);
 		
 		// Overvoltage and UnderVoltage delays
 		error |= write_reg(BQ_PROTECT3, BQ_UV_DELAY_1s | BQ_OV_DELAY_1s);
@@ -203,30 +204,13 @@ uint8_t bq76940_init(void) {
 
 		bq_discharge_enable();
 		bq_charge_enable();
-
-		//chThdSleepMilliseconds(40);
-		//read_reg(BQ_SYS_STAT);
-
+        
 		bq76940->disconnection_request_completed = true;
 
 		// Mark the AFE as initialized for the next post-sleep resets
 		bq76940->initialized = true;
 		}
 	}
-
-
-	/////////////////////////////////////////////////// provisional
-    //if(status_pin_discharge){
-	//	uint8_t data = read_reg(BQ_SYS_CTRL2);
-	//	data = data | 0x03;
-	//	write_reg(BQ_SYS_CTRL2, data);
-	//}
-	//else{
-		//uint8_t data = read_reg(BQ_SYS_CTRL2);
-		//data = (data & 0xFD);
-		//write_reg(BQ_SYS_CTRL2, data);
-	//}
-    ////////////////////////////////////////////////////provisional
 
 	// Clear Status Register. This will clear the Alert pin so its ready
 	// for the next event in 250ms
@@ -257,8 +241,8 @@ void bq76940_Alert_handler(void) {
 	static int disconnect_request_done_once = false;
 	static int last_disconnect_request = false;	//N/A
 	
-    bq_discharge_enable();
-    bq_charge_enable();
+    //bq_discharge_enable();
+    //bq_charge_enable();
 /*
 	if(bq76940->disconnection_request_completed == false ) {
         if( (disconnect_request_done_once == false) || (bq76940->disconnection_request != last_disconnect_request) ) { 
@@ -613,37 +597,69 @@ int8_t current_discharge_protect_set(uint8_t time1,
 									 uint8_t time2,
 									 uint8_t overcurrent)
 {
-
-	uint8_t RSNS = 0;
-
-	if(current_short_circuit == ( BQ_SCP_22mV | BQ_SCP_33mV | BQ_SCP_44mV | BQ_SCP_56mV |
-				    			  BQ_SCP_67mV | BQ_SCP_78mV | BQ_SCP_89mV | BQ_SCP_100mV )){
-		RSNS = 0x00;
+   
+    if ((overcurrent == BQ_OCP_17mV) ||
+        (overcurrent == BQ_OCP_22mV) ||
+        (overcurrent == BQ_OCP_28mV) ||
+        (overcurrent == BQ_OCP_33mV) ||
+        (overcurrent == BQ_OCP_39mV) ||
+        (overcurrent == BQ_OCP_44mV) ||
+        (overcurrent == BQ_OCP_50mV) ||
+        (overcurrent == BQ_OCP_56mV) ||
+        (overcurrent == BQ_OCP_61mV) ||
+        (overcurrent == BQ_OCP_67mV) ||
+        (overcurrent == BQ_OCP_72mV) ||
+        (overcurrent == BQ_OCP_78mV) ||
+        (overcurrent == BQ_OCP_83mV) ||
+        (overcurrent == BQ_OCP_89mV) ||
+        (overcurrent == BQ_OCP_94mV) ||
+        (overcurrent == BQ_OCP_100mV))
+    {
+        if((current_short_circuit == BQ_SCP_44mV) 	||
+           (current_short_circuit == BQ_SCP_67mV) 	||
+           (current_short_circuit == BQ_SCP_89mV) 	||
+           (current_short_circuit == BQ_SCP_111mV) 	||
+           (current_short_circuit == BQ_SCP_133mV) 	||
+           (current_short_circuit == BQ_SCP_155mV) 	||
+           (current_short_circuit == BQ_SCP_178mV) 	||
+           (current_short_circuit == BQ_SCP_200mV))  
+		{
+			write_reg(BQ_PROTECT1, ( 0x80 | time1 | current_short_circuit )); //RSNS is set to one
+			write_reg(BQ_PROTECT2, ( time2 | overcurrent ));
+		}
+    }    
+    
+    if ((overcurrent == BQ_OCP_8mV) ||
+        (overcurrent == BQ_OCP_11mV) ||
+        (overcurrent == BQ_OCP_14mV) ||
+        (overcurrent == BQ_OCP_17mV) ||
+        (overcurrent == BQ_OCP_19mV) ||
+        (overcurrent == BQ_OCP_22mV) ||
+        (overcurrent == BQ_OCP_25mV) ||
+        (overcurrent == BQ_OCP_28mV) ||
+        (overcurrent == BQ_OCP_31mV) ||
+        (overcurrent == BQ_OCP_33mV) ||
+        (overcurrent == BQ_OCP_36mV) ||
+        (overcurrent == BQ_OCP_39mV) ||
+        (overcurrent == BQ_OCP_42mV) ||
+        (overcurrent == BQ_OCP_44mV) ||
+        (overcurrent == BQ_OCP_47mV) ||
+        (overcurrent == BQ_OCP_50mV))
+    {
+        if((current_short_circuit == BQ_SCP_22mV) 	||
+           (current_short_circuit == BQ_SCP_33mV) 	||
+           (current_short_circuit == BQ_SCP_44mV) 	||
+           (current_short_circuit == BQ_SCP_56mV) 	||
+           (current_short_circuit == BQ_SCP_67mV) 	||
+           (current_short_circuit == BQ_SCP_78mV) 	||
+           (current_short_circuit == BQ_SCP_89mV) 	||
+           (current_short_circuit == BQ_SCP_100mV))
+		{
+			write_reg(BQ_PROTECT1, ( time1 | current_short_circuit ));
+			write_reg(BQ_PROTECT2, ( time2 | overcurrent ));
+		}	
 	}
-	if(current_short_circuit == ( BQ_SCP_44mV | BQ_SCP_67mV | BQ_SCP_89mV | BQ_SCP_111mV |
-				                  BQ_SCP_133mV | BQ_SCP_155mV | BQ_SCP_178mV | BQ_SCP_200mV )){
-		RSNS = 0x80;
-	}
-	else{
-		RSNS = 0x00;
-		current_short_circuit = BQ_SCP_22mV;
-		time1 = BQ_SCP_70us;
-	}
-
-	write_reg(BQ_PROTECT1, ( time1 | (RSNS | current_short_circuit) ) );
-
-//this can't be right
-	if(overcurrent == (BQ_OCP_8mV | BQ_OCP_11mV | BQ_OCP_14mV | BQ_OCP_17mV | BQ_OCP_19mV |
-			          BQ_OCP_22mV | BQ_OCP_25mV | BQ_OCP_28mV | BQ_OCP_31mV | BQ_OCP_33mV |
-					  BQ_OCP_36mV | BQ_OCP_39mV | BQ_OCP_39mV | BQ_OCP_42mV | BQ_OCP_44mV |
-					  BQ_OCP_47mV | BQ_OCP_50mV)){
-		write_reg(BQ_PROTECT2, ( time2 | (RSNS | overcurrent) ) );
-	}
-	else{
-		write_reg(BQ_PROTECT2, ( BQ_OCP_8ms | (RSNS | BQ_OCP_8mV) ) );
-	}
-
-
+	
 	return 0;
 }
 
