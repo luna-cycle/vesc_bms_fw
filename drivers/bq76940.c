@@ -163,13 +163,6 @@ uint8_t bq76940_init(void) {
 	// if we want to change the AFE configuration we have to reset it to default values and then it will be
 	// rećonfigured on the next MCU reset.
 	
-	//OverVoltage and UnderVoltage thresholds
-    write_reg(BQ_OV_TRIP, tripVoltage(4.25));
-    write_reg(BQ_UV_TRIP, tripVoltage(2.8));
-    // Short Circuit Protection    
-    current_discharge_protect_set(BQ_SCP_70us, BQ_SCP_22mV,BQ_OCP_8ms,BQ_OCP_8mV);  
-	write_reg(BQ_PROTECT1, BQ_SCP_70us |  BQ_SCP_22mV);
-	write_reg(BQ_PROTECT2, BQ_OCP_8ms | BQ_OCP_42mV);
 	
 	if((read_reg(BQ_SYS_CTRL1) & 0x08) == 0x00) {	//MSB could be '1' (LOAD_PRESENT), ADC_EN '1' in normal mode
 		if(read_reg(BQ_SYS_CTRL2) == 0x00) {
@@ -181,13 +174,15 @@ uint8_t bq76940_init(void) {
 		error |= write_reg(BQ_CC_CFG, 0x19);
 		
         //OverVoltage and UnderVoltage thresholds
-		//write_reg(BQ_OV_TRIP, 0xC9);//tripVoltage(4.25));
-
-        //write_reg(BQ_UV_TRIP, 0x00);//tripVoltage(2.80)
-		// Short Circuit Protection
-        error |= write_reg(BQ_PROTECT1, BQ_SCP_70us |  BQ_SCP_22mV);
+        //OverVoltage and UnderVoltage thresholds
+        write_reg(BQ_OV_TRIP, tripVoltage(4.25));
+        write_reg(BQ_UV_TRIP, tripVoltage(2.80));
+        
+        // Short Circuit Protection
+        current_discharge_protect_set(BQ_SCP_70us, BQ_SCP_22mV,BQ_OCP_8ms,BQ_OCP_8mV);  
+        //error |= write_reg(BQ_PROTECT1, BQ_SCP_70us |  BQ_SCP_22mV);
 		// Over Current Protection at 200 A
-		error |= write_reg(BQ_PROTECT2, BQ_OCP_8ms | BQ_OCP_8mV);
+		//error |= write_reg(BQ_PROTECT2, BQ_OCP_8ms | BQ_OCP_8mV);
 		
 		// Overvoltage and UnderVoltage delays
 		error |= write_reg(BQ_PROTECT3, BQ_UV_DELAY_1s | BQ_OV_DELAY_1s);

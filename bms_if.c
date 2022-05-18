@@ -173,7 +173,7 @@ static THD_FUNCTION(btb_charge_thd, p) {
 	for (;;) {
 		// disconnect battery if any cell temp is above max limit
 		//It'll short the circuit for the temperature mosfets too.!!!!!
-		if(HW_TEMP_CELLS_MAX() > backup.config.t_charge_max) {
+/*		if(HW_TEMP_CELLS_MAX() > backup.config.t_charge_max) {
 			//PACK_DISCONNECT();
 			bms_if_fault_report(FAULT_CODE_CELL_OVERTEMP);
 			last_fault_time = chVTGetSystemTimeX();
@@ -185,11 +185,12 @@ static THD_FUNCTION(btb_charge_thd, p) {
 			bms_if_fault_report(FAULT_CODE_CELL_UNDERTEMP);
 			last_fault_time = chVTGetSystemTimeX();
 		}
-		
+*/		
 		// disconnect battery if any cell temp is below min limit (TODO: separate threshold for charging and discharging min temp)
 
 		// disconnect battery in case of overload. for example 90A avg for 7 seconds like surron does
-        
+		if(UTILS_AGE_S(last_fault_time) > 7.0) {
+		}
 		// handle frontend-specific protections like cell OV, cell UV, OCP and SHP
 
 		// if a battery disconnection happened, wait 30 seconds until re-arming it

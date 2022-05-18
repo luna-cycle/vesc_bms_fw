@@ -23,12 +23,13 @@
 #include "commands.h"
 #include "bq76940.h"
 
-static void terminal_cmd_set_initial_assist_level(int argc, const char **argv);
+static void terminal_cmd_shipmode(int argc, const char **argv);
+static void terminal_cmd_connect(int argc, const char **argv);
 
 void hw_luna_init(void){
     bq76940_init();
-	terminal_register_command_callback("shipmode", "Shipmode = turn off bq 76940", 0, terminal_cmd_set_initial_assist_level);	
-//    terminal_register_command_callback("Level trip", "Shunt Resistors", 0, terminal_cmd_set_initial_assist_level);	
+	terminal_register_command_callback("shipmode", "Shipmode = turn off bq 76940", 0, terminal_cmd_shipmode);	
+    terminal_register_command_callback("Connect", "Connect=turn on big mosfets", 0, terminal_cmd_connect);	
 }
 
 float hw_luna_get_cell_temp_max(void) {
@@ -46,7 +47,7 @@ float hw_luna_get_cell_temp_max(void) {
 float hw_luna_get_temp(int sensors){
 // hardware has 8 temperature sensors (plus internal AFE sensor):
 // T[0]: cell temperature TC1
-// T[1]: cell temperature TC2
+/// T[1]: cell temperature TC2
 // T[2]: cell temperature TC3
 // T[3]: cell temperature TC4
 // T[4]: Negative Connector terminal temperature
@@ -70,7 +71,7 @@ float hw_luna_get_temp(int sensors){
 
 
     
-static void terminal_cmd_set_initial_assist_level(int argc, const char **argv) {
+static void terminal_cmd_shipmode(int argc, const char **argv) {
 	(void)argc;
 	(void)argv;
 
@@ -79,11 +80,12 @@ static void terminal_cmd_set_initial_assist_level(int argc, const char **argv) {
 	return;
 }
 
-static void terminal_cmd_read_initial_assist_level(int argc, const char **argv) {
+static void terminal_cmd_connect(int argc, const char **argv) {
 	(void)argc;
 	(void)argv;
 
-	commands_printf("BBSHD initial assist level is set at %i", hw_read_initial_assist_level());
-	commands_printf(" ");
+    bq_discharge_enable();
+    bq_charge_enable();
+    
 	return;
 }
