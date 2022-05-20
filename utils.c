@@ -66,7 +66,11 @@ uint32_t utils_crc32c(uint8_t *data, uint32_t len) {
 const char* utils_fault_to_string(bms_fault_code fault) {
 	switch (fault) {
 	case FAULT_CODE_NONE: return "FAULT_CODE_NONE"; break;
-	case FAULT_CODE_CHARGE_OVERCURRENT: return "FAULT_CODE_CHARGE_OVERCURRENT"; break;
+    case FAULT_CODE_CELL_UNDERVOLTAGE: return "FAULT_CODE_CELL_UNDERVOLTAGE"; break;
+    case FAULT_CODE_CELL_OVERVOLTAGE: return "FAULT_CODE_CELL_OVERVOLTAGE"; break;
+    case FAULT_CODE_DISCHARGE_SHORT_CIRCUIT: return "FAULT_CODE_DISCHARGE_SHORT_CIRCUIT"; break;
+    case FAULT_CODE_DISCHARGE_OVERCURRENT: return "FAULT_CODE_DISCHARGE_OVERCURRENT"; break;
+    case FAULT_CODE_CHARGE_OVERCURRENT: return "FAULT_CODE_CHARGE_OVERCURRENT"; break;
 	case FAULT_CODE_CHARGE_OVERTEMP: return "FAULT_CODE_CHARGE_OVERTEMP"; break;
 	default: return "FAULT_UNKNOWN"; break;
 	}

@@ -176,13 +176,12 @@ uint8_t bq76940_init(void) {
         //OverVoltage and UnderVoltage thresholds
         //OverVoltage and UnderVoltage thresholds
         write_reg(BQ_OV_TRIP, tripVoltage(4.25));
+        write_reg(BQ_PROTECT3, BQ_OV_DELAY_1s);
         write_reg(BQ_UV_TRIP, tripVoltage(2.80));
+        write_reg(BQ_PROTECT3, BQ_UV_DELAY_1s);
         
         // Short Circuit Protection
         current_discharge_protect_set(BQ_SCP_70us, BQ_SCP_22mV,BQ_OCP_8ms,BQ_OCP_8mV);  
-        //error |= write_reg(BQ_PROTECT1, BQ_SCP_70us |  BQ_SCP_22mV);
-		// Over Current Protection at 200 A
-		//error |= write_reg(BQ_PROTECT2, BQ_OCP_8ms | BQ_OCP_8mV);
 		
 		// Overvoltage and UnderVoltage delays
 		error |= write_reg(BQ_PROTECT3, BQ_UV_DELAY_1s | BQ_OV_DELAY_1s);
@@ -227,7 +226,7 @@ void bq76940_Alert_handler(void) {
     	
 	// Read Status Register
 	uint8_t sys_stat = read_reg(BQ_SYS_STAT);
-
+    
 	//
 	bq76940->CC = bq_read_CC();
 
@@ -236,8 +235,6 @@ void bq76940_Alert_handler(void) {
 	static int disconnect_request_done_once = false;
 	static int last_disconnect_request = false;	//N/A
 	
-    //bq_discharge_enable();
-    //bq_charge_enable();
 /*
 	if(bq76940->disconnection_request_completed == false ) {
         if( (disconnect_request_done_once == false) || (bq76940->disconnection_request != last_disconnect_request) ) { 
@@ -251,12 +248,12 @@ void bq76940_Alert_handler(void) {
 */
 	// Every 1 second make the long read
 	static uint8_t i = 0;
+    
 	if(i++ == 4){
 		read_cell_voltages(m_v_cell); 	//read cell voltages
 		read_v_batt(&bq76940->pack_mv);
 		bq_balance_cells(m_discharge_state);	//configure balancing bits over i2c
 		i = 0;
-        
 	}
 	
 	//read external temp for 2.5 sec, then internal temp for 2.5sec and repeat
@@ -267,6 +264,7 @@ void bq76940_Alert_handler(void) {
 			//configure AFE so after 2 seconds the external temperature will become available
 			write_reg(BQ_SYS_CTRL1, (ADC_EN | TEMP_SEL));
 	}
+	
 	if(temp_sensing_state == 10) {
 		  	//read external temperatures
 			bq_read_temps(bq76940->temp);
@@ -279,6 +277,16 @@ void bq76940_Alert_handler(void) {
 		temp_sensing_state = 0;
 	}
 
+	static uint8_t buff = 0;
+    
+	if( (((buff = read_reg(BQ_SYS_CTRL2)) & 0x03) == 0x02) ||
+        (((buff = read_reg(BQ_SYS_CTRL2)) & 0x03) == 0x01) ){
+        
+        //commands_printf("SYS_STAT = %d", (read_reg(BQ_SYS_STAT) & 0x0F) );
+    }
+    else{
+    }
+	
 	// Report fault codes
 	if ( sys_stat & SYS_STAT_DEVICE_XREADY ) {
 		//handle error
