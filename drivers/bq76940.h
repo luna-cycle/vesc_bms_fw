@@ -166,7 +166,7 @@
 #define BQ_ADCGAIN1		0x50
 #define BQ_ADCOFFSET	0x51
 #define BQ_ADCGAIN2		0x59
-
+   
 // Macros
 
 typedef enum {

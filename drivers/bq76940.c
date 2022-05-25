@@ -198,8 +198,8 @@ uint8_t bq76940_init(void) {
 
 		bq_discharge_enable();
 		bq_charge_enable();
-        
-		bq76940->disconnection_request_completed = true;
+		//bq_request_disconnect_battery(true);
+		//bq_disconnect_battery(bq76940->disconnection_request);
 
 		// Mark the AFE as initialized for the next post-sleep resets
 		bq76940->initialized = true;
@@ -235,8 +235,8 @@ void bq76940_Alert_handler(void) {
 	static int disconnect_request_done_once = false;
 	static int last_disconnect_request = false;	//N/A
 	
-/*
-	if(bq76940->disconnection_request_completed == false ) {
+	
+	if(bq76940->disconnection_request_completed == false) {
         if( (disconnect_request_done_once == false) || (bq76940->disconnection_request != last_disconnect_request) ) { 
             bq_disconnect_battery(bq76940->disconnection_request);
 			bq76940->disconnection_request_completed = true;
@@ -245,7 +245,7 @@ void bq76940_Alert_handler(void) {
 			disconnect_request_done_once = true;
 		}
 	}
-*/
+	
 	// Every 1 second make the long read
 	static uint8_t i = 0;
     
@@ -276,17 +276,8 @@ void bq76940_Alert_handler(void) {
 	if(temp_sensing_state == 20) {
 		temp_sensing_state = 0;
 	}
-
-	static uint8_t buff = 0;
     
-	if( (((buff = read_reg(BQ_SYS_CTRL2)) & 0x03) == 0x02) ||
-        (((buff = read_reg(BQ_SYS_CTRL2)) & 0x03) == 0x01) ){
-        
-        //commands_printf("SYS_STAT = %d", (read_reg(BQ_SYS_STAT) & 0x0F) );
-    }
-    else{
-    }
-	
+    
 	// Report fault codes
 	if ( sys_stat & SYS_STAT_DEVICE_XREADY ) {
 		//handle error
@@ -305,8 +296,14 @@ void bq76940_Alert_handler(void) {
 	}
 	if ( sys_stat & SYS_STAT_OCD ) {
 		bms_if_fault_report(FAULT_CODE_DISCHARGE_OVERCURRENT);
-	}
+    }
 
+    if( (((read_reg(BQ_SYS_CTRL2)) & 0x03) == 0x02) ||
+        (((read_reg(BQ_SYS_CTRL2)) & 0x03) == 0x01) ){
+			bq_request_disconnect_battery(true);
+            bq_disconnect_battery(bq76940->disconnection_request);
+	}
+	
 	// Clear Status Register. This will clear the Alert pin so its ready
 	// for the next event in 250ms
 	write_reg(BQ_SYS_STAT,0xFF);
@@ -512,6 +509,7 @@ void bq_disconnect_battery(bool disconnect) {
 		bq_discharge_enable();
 		bq_charge_enable();
 	}	
+	
 }
 
 void bq_discharge_enable(void){
