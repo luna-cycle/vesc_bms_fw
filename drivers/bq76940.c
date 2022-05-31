@@ -60,8 +60,8 @@ typedef struct __attribute__((packed)) {
 	bool m_discharge_state[MAX_CELL_NUM];
 	bool discharge_enabled;
 	bool charge_enabled;
-	bool disconnection_request;
-	bool disconnection_request_completed;
+	bool is_connected_pack;
+	bool request_connection_pack;
 	fault_data	fault;
 } bq76940_t;
 
@@ -164,7 +164,7 @@ uint8_t bq76940_init(void) {
 	// rećonfigured on the next MCU reset.
 	
 	
-	if((read_reg(BQ_SYS_CTRL1) & 0x08) == 0x00) {	//MSB could be '1' (LOAD_PRESENT), ADC_EN '1' in normal mode
+	if((read_reg(BQ_SYS_CTRL1) & 0x08) == 0x00) {	//ADC_EN '1' in normal mode
 		if(read_reg(BQ_SYS_CTRL2) == 0x00) {
 
 		// enable ADC and thermistors
@@ -173,19 +173,16 @@ uint8_t bq76940_init(void) {
         // write 0x19 to CC_CFG according to datasheet page 39
 		error |= write_reg(BQ_CC_CFG, 0x19);
 		
-        //OverVoltage and UnderVoltage thresholds
-        //OverVoltage and UnderVoltage thresholds
-        write_reg(BQ_OV_TRIP, tripVoltage(4.25));
-        write_reg(BQ_PROTECT3, BQ_OV_DELAY_1s);
-        write_reg(BQ_UV_TRIP, tripVoltage(2.80));
-        write_reg(BQ_PROTECT3, BQ_UV_DELAY_1s);
+        //OverVoltage threshold
+        error |= write_reg(BQ_OV_TRIP, tripVoltage(4.25));
+        error |= write_reg(BQ_PROTECT3, BQ_OV_DELAY_4s);
+        //UnderVoltage threshold
+		error |= write_reg(BQ_UV_TRIP, tripVoltage(2.80));
+        error |= write_reg(BQ_PROTECT3, BQ_UV_DELAY_4s);
         
         // Short Circuit Protection
         current_discharge_protect_set(BQ_SCP_70us, BQ_SCP_22mV,BQ_OCP_8ms,BQ_OCP_8mV);  
 		
-		// Overvoltage and UnderVoltage delays
-		error |= write_reg(BQ_PROTECT3, BQ_UV_DELAY_1s | BQ_OV_DELAY_1s);
-
 		// clear SYS-STAT for init
 		write_reg(BQ_SYS_STAT,0xFF);
 
@@ -196,10 +193,10 @@ uint8_t bq76940_init(void) {
 		write_reg(BQ_SYS_STAT,0xFF);
 		chThdSleepMilliseconds(10);
 
-		bq_discharge_enable();
-		bq_charge_enable();
-		//bq_request_disconnect_battery(true);
-		//bq_disconnect_battery(bq76940->disconnection_request);
+		//bq_discharge_enable();
+		//bq_charge_enable();
+		bq_connect_pack(true);    
+		//!!!!!!!!!!!!!!!!!!!!!bq76940->disconnection_request_completed = true;
 
 		// Mark the AFE as initialized for the next post-sleep resets
 		bq76940->initialized = true;
@@ -230,21 +227,23 @@ void bq76940_Alert_handler(void) {
 	//
 	bq76940->CC = bq_read_CC();
 
-	// this logic could be simplified if we read the CHG/DSC status register on startup
-	// force first request. The following request will be transfered over i2c only if the bits are not already set
-	static int disconnect_request_done_once = false;
-	static int last_disconnect_request = false;	//N/A
+	// Read the state of connection pack
+	static uint8_t	buff;
 	
-	
-	if(bq76940->disconnection_request_completed == false) {
-        if( (disconnect_request_done_once == false) || (bq76940->disconnection_request != last_disconnect_request) ) { 
-            bq_disconnect_battery(bq76940->disconnection_request);
-			bq76940->disconnection_request_completed = true;
-			last_disconnect_request = bq76940->disconnection_request;
-            //CHG/DSC now in a known state
-			disconnect_request_done_once = true;
-		}
+	if( (((buff = read_reg(BQ_SYS_CTRL2)) & 0x03) == 0x02) || //Problem in Charge
+        (((buff = read_reg(BQ_SYS_CTRL2)) & 0x03) == 0x01) ){ //Problem with UV,SC or OC
+		bq_connect_pack(false);
+		bq76940->is_connected_pack = false;
+    }
+    else{
+		bq76940->is_connected_pack = true;
 	}
+	
+	if(bq76940->request_connection_pack){
+		bq_connect_pack(true);
+	}
+	
+	//commands_printf("is connected pack = %d", (read_reg(BQ_SYS_STAT) & 0x0F) );
 	
 	// Every 1 second make the long read
 	static uint8_t i = 0;
@@ -276,8 +275,7 @@ void bq76940_Alert_handler(void) {
 	if(temp_sensing_state == 20) {
 		temp_sensing_state = 0;
 	}
-    
-    
+	
 	// Report fault codes
 	if ( sys_stat & SYS_STAT_DEVICE_XREADY ) {
 		//handle error
@@ -296,14 +294,8 @@ void bq76940_Alert_handler(void) {
 	}
 	if ( sys_stat & SYS_STAT_OCD ) {
 		bms_if_fault_report(FAULT_CODE_DISCHARGE_OVERCURRENT);
-    }
-
-    if( (((read_reg(BQ_SYS_CTRL2)) & 0x03) == 0x02) ||
-        (((read_reg(BQ_SYS_CTRL2)) & 0x03) == 0x01) ){
-			bq_request_disconnect_battery(true);
-            bq_disconnect_battery(bq76940->disconnection_request);
 	}
-	
+
 	// Clear Status Register. This will clear the Alert pin so its ready
 	// for the next event in 250ms
 	write_reg(BQ_SYS_STAT,0xFF);
@@ -496,20 +488,18 @@ float bq_get_current(void){
 	return bq76940->CC;
 }
 
-void bq_request_disconnect_battery(bool flag) {
-	bq76940->disconnection_request = flag;
-	bq76940->disconnection_request_completed = false;
+void bq_request_connect_pack(bool flag) {
+	bq76940->request_connection_pack = flag;
 }
 
-void bq_disconnect_battery(bool disconnect) {
-	if(disconnect) {
-		bq_discharge_disable();
-		bq_charge_disable();
-	} else {
+void bq_connect_pack(bool request) {
+	if(request) {
 		bq_discharge_enable();
 		bq_charge_enable();
+	} else {
+		bq_discharge_disable();
+		bq_charge_disable();
 	}	
-	
 }
 
 void bq_discharge_enable(void){
