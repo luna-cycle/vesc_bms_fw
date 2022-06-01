@@ -75,23 +75,23 @@ void bms_if_init(void) {
     chThdCreateStatic(balance_thd_wa, sizeof(balance_thd_wa), NORMALPRIO, balance_thd, 0);
 }
 
-#ifdef HW_ONE_MOSFET_CONTROL
 static bool charge_ok(void) {
 
 	float max = m_is_charging ? backup.config.vc_charge_end : backup.config.vc_charge_start;
-	commands_printf("v_charge_detect: %f", backup.config.v_charge_detect);
-	commands_printf("HW_GET_CHARGE: %f", HW_GET_V_CHARGE());
-	commands_printf("m_voltage_cell_min: %f", m_voltage_cell_min);
-	commands_printf("charge_min: %f", backup.config.vc_charge_min);
-	commands_printf("m_voltage_cell_max: %f", m_voltage_cell_max);
-	commands_printf("max: %f", max);*/
-	return  HW_GET_V_CHARGE() > backup.config.v_charge_detect; // HW_GET_V_CHARGE is Battery Voltage
+	//commands_printf("v_charge_detect: %f", backup.config.v_charge_detect);
+	//commands_printf("HW_GET_CHARGE: %f", HW_GET_V_CHARGE());
+	//commands_printf("m_voltage_cell_min: %f", m_voltage_cell_min);
+	//commands_printf("charge_min: %f", backup.config.vc_charge_min);
+	//commands_printf("m_voltage_cell_max: %f", m_voltage_cell_max);
+	//commands_printf("max: %f", max);*/
+	return  1;/*HW_GET_V_CHARGE() > backup.config.v_charge_detect; // HW_GET_V_CHARGE is Battery Voltage
 			m_voltage_cell_min > backup.config.vc_charge_min &&
 			m_voltage_cell_max < max &&
 			HW_TEMP_CELLS_MAX() < backup.config.t_charge_max &&
 			HW_TEMP_CELLS_MAX() > backup.config.t_charge_min;*/
 }
 
+#ifdef HW_ONE_MOSFET_CONTROL
 static THD_FUNCTION(charge_thd, p) {
 	(void)p;
 	chRegSetThreadName("Charge");
@@ -171,6 +171,26 @@ static THD_FUNCTION(btb_charge_thd, p) {
 	uint32_t connection_retries = 0;
 	
 	for (;;) {
+        
+        
+        if (m_is_charging && HW_TEMP_CELLS_MAX() >= backup.config.t_charge_max) {
+			bms_if_fault_report(FAULT_CODE_CHARGE_OVERTEMP);
+		}
+
+		if (charge_ok() && m_charge_allowed && !m_was_charge_overcurrent) {
+			if (!m_is_charging) {
+				sleep_reset();
+				chThdSleepMilliseconds(20);
+				if (charge_ok()) {
+					m_is_charging = true;
+					CHARGE_ENABLE();
+				}
+			}
+		} else {
+			m_is_charging = false;
+			CHARGE_DISABLE();
+		}
+        
 		// disconnect battery if any cell temp is above max limit
 		//It'll short the circuit for the temperature mosfets too.!!!!!
 		if(/*HW_TEMP_CELLS_MAX()*/25.0 > backup.config.t_charge_max) {

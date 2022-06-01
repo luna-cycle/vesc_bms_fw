@@ -182,7 +182,8 @@ uint8_t bq76940_init(void) {
         
         // Short Circuit Protection
         current_discharge_protect_set(BQ_SCP_70us, BQ_SCP_22mV,BQ_OCP_8ms,BQ_OCP_8mV);  
-		
+		//Here we need use the error variable
+        
 		// clear SYS-STAT for init
 		write_reg(BQ_SYS_STAT,0xFF);
 
@@ -193,10 +194,8 @@ uint8_t bq76940_init(void) {
 		write_reg(BQ_SYS_STAT,0xFF);
 		chThdSleepMilliseconds(10);
 
-		//bq_discharge_enable();
-		//bq_charge_enable();
+		//Connect the pack
 		bq_connect_pack(true);    
-		//!!!!!!!!!!!!!!!!!!!!!bq76940->disconnection_request_completed = true;
 
 		// Mark the AFE as initialized for the next post-sleep resets
 		bq76940->initialized = true;
@@ -232,17 +231,17 @@ void bq76940_Alert_handler(void) {
 	
 	if( (((buff = read_reg(BQ_SYS_CTRL2)) & 0x03) == 0x02) || //Problem in Charge
         (((buff = read_reg(BQ_SYS_CTRL2)) & 0x03) == 0x01) ){ //Problem with UV,SC or OC
-		bq_connect_pack(false);
+		bq_connect_pack(false); //Disconnect the the pins charge and discharge.
 		bq76940->is_connected_pack = false;
     }
     else{
 		bq76940->is_connected_pack = true;
 	}
 	
-	if(bq76940->request_connection_pack){
-		bq_connect_pack(true);
-	}
-	
+	//Connect the pack if the High level request the connection
+	if( bq76940->is_connected_pack ){
+		bq_connect_pack(bq76940->request_connection_pack);
+    }
 	//commands_printf("is connected pack = %d", (read_reg(BQ_SYS_STAT) & 0x0F) );
 	
 	// Every 1 second make the long read
