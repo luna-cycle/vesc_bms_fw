@@ -176,10 +176,13 @@ static THD_FUNCTION(btb_charge_thd, p) {
         if (m_is_charging && HW_TEMP_CELLS_MAX() >= backup.config.t_charge_max) {
 			bms_if_fault_report(FAULT_CODE_CHARGE_OVERTEMP);
 		}
-
+	
+		//Charge_ok(): electrical and temperature conditions to charge
+		//m_charge_allowed: handler to vesc tool to command charge enable or charge disabled
+		//m_was_charge_overcurrent: had a high charging current
 		if (charge_ok() && m_charge_allowed && !m_was_charge_overcurrent) {
 			if (!m_is_charging) {
-				sleep_reset();
+				//sleep_reset();
 				chThdSleepMilliseconds(20);
 				if (charge_ok()) {
 					m_is_charging = true;
@@ -428,11 +431,17 @@ static THD_FUNCTION(if_thd, p) {
 				backup.wh_cnt_chg_total -= d_wh;
 			}
 		}
-
+    
+#ifdef HW_ONE_MOSFET_CONTROL
 		if (fabsf(bms_if_get_i_in_ic()) > backup.config.min_current_sleep) {
 			sleep_reset(); //Originally don't comment
 		}
-
+#endif
+#ifdef HW_BACK_TO_BACK_MOSFETS
+		if ( fabs(HW_GET_I_IN()) > backup.config.min_current_sleep) {
+            sleep_reset(); //Originally don't comment
+		}
+#endif
 		float soc_now = utils_batt_liion_norm_v_to_capacity(utils_map(m_voltage_cell_min, 3.2, 4.2, 0.0, 1.0));
 		if (!m_soc_filter_init_done) {
 			m_soc_filter_init_done = true;

@@ -22,6 +22,7 @@
 #include "bms_if.h"
 #include "string.h"
 #include "stdbool.h"
+#include "timeout.h"
 #include "utils.h"
 #include "main.h"
 #include "math.h"
@@ -126,7 +127,7 @@ uint8_t bq76940_init(void) {
 	palSetLineMode(LINE_LED_RED_DEBUG, PAL_MODE_OUTPUT_PUSHPULL);
 	palSetLineMode(LINE_LED_GREEN_DEBUG, PAL_MODE_OUTPUT_PUSHPULL);
 
-	LED_RED_DEBUG_ON();
+//	LED_RED_DEBUG_ON();
 
 	bq76940->shunt_res = HW_SHUNT_RES;
 
@@ -210,7 +211,7 @@ uint8_t bq76940_init(void) {
 
 	palEnablePadEvent(GPIOA, 2U, PAL_EVENT_MODE_RISING_EDGE);
 
-	LED_RED_DEBUG_OFF();
+//	LED_RED_DEBUG_OFF();
 
 	return error; // 0 if successful
 }
@@ -218,14 +219,14 @@ uint8_t bq76940_init(void) {
 
 // This function will be executed when the Alert pin is driven to '1' by the AFE
 void bq76940_Alert_handler(void) {
-	LED_GREEN_DEBUG_ON();
-    	
+//	LED_GREEN_DEBUG_ON();
+    
 	// Read Status Register
 	uint8_t sys_stat = read_reg(BQ_SYS_STAT);
     
-	//
+	//Read pack current
 	bq76940->CC = bq_read_CC();
-
+    
 	// Read the state of connection pack
 	static uint8_t	buff;
 	
@@ -294,12 +295,12 @@ void bq76940_Alert_handler(void) {
 	if ( sys_stat & SYS_STAT_OCD ) {
 		bms_if_fault_report(FAULT_CODE_DISCHARGE_OVERCURRENT);
 	}
-
+	
 	// Clear Status Register. This will clear the Alert pin so its ready
 	// for the next event in 250ms
 	write_reg(BQ_SYS_STAT,0xFF);
 
-	LED_GREEN_DEBUG_OFF();
+//	LED_GREEN_DEBUG_OFF();
     
 }
 
@@ -316,6 +317,7 @@ static THD_FUNCTION(sample_thread, arg) {
 
 		bq76940_Alert_handler();
         
+        timeout_feed_WDT(THREAD_AFE);
     }
 }
 
@@ -471,16 +473,6 @@ float bq_read_CC(void) {
 	int16_t CC_reg = (int16_t)(CC_lo | CC_hi << 8);
 	
 	return (float)CC_reg * CC_REG_TO_AMPS_FACTOR / bq76940->shunt_res;
-}
-
-void iin_measure(float *i_in ) {
-	uint16_t CC_hi = read_reg(BQ_CC_HI);
-	uint16_t CC_lo = read_reg(BQ_CC_LO);
-	int16_t CC_reg = (int16_t)(CC_lo | CC_hi << 8);
-	
-	*(i_in) = (float)CC_reg * CC_REG_TO_AMPS_FACTOR / bq76940->shunt_res;
-
-	return;
 }
 
 float bq_get_current(void){

@@ -88,14 +88,6 @@ static void go_to_sleep(void) {
 	wakeupspec.wutr |= 5; // Period will be 5+1 seconds.
 	rtcSTM32SetPeriodicWakeup(&RTCD1, &wakeupspec);
 
-//////////////////////////////////////////////////////////////////////
-	//Set enable internal wakeup line
-	//PWR->CR3 |= PWR_CR3_EIWUL;
-	//Enable Wakeup pin (PA2)
-	//PWR->CR3 |= PWR_CR3_EWUP4;
-	//Select rising edge to wakeup
-	//PWR->CR4 |= PWR_SR1_WUF4;
-///////////////////////////////////////////////////////////////////////
 	/* Enter STANDBY mode */
 	PWR->CR1 |= PWR_CR1_LPMS_STANDBY;
 	PWR->CR3 |= PWR_CR3_RRS; // Keep ram4 during standby
@@ -124,12 +116,15 @@ static THD_FUNCTION(sleep_thread, arg) {
 				blink = 0;
 			}
 			if (blink < 40) {
-				LED_ON(LINE_LED_GREEN);
+				LED_GREEN_DEBUG_ON();
+                LED_ON(LINE_LED_GREEN);
 			} else {
+                LED_GREEN_DEBUG_OFF();
 				LED_OFF(LINE_LED_GREEN);
 			}
 
 		} else {
+            LED_GREEN_DEBUG_OFF();
 			LED_OFF(LINE_LED_GREEN);
 			go_to_sleep();
 		}
@@ -137,6 +132,7 @@ static THD_FUNCTION(sleep_thread, arg) {
 		if (!usb_conf_reset && usb_cdc_configured_cnt() > 0) {
 			m_sleep_timer = 240000;
 			usb_conf_reset = true;
+            //LED_RED_DEBUG_ON();
 			LED_ON(LINE_LED_RED);
 		}
 
