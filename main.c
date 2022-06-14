@@ -173,7 +173,7 @@ int main(void) {
 	}
 
 	pwr_init();
-	ltc_init();
+	HW_AFE_INIT();//ltc_init();
 	bms_if_init();
 	comm_can_init();
 	comm_can_set_baud(backup.config.can_baud_rate);

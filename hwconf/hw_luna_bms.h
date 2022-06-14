@@ -28,8 +28,9 @@
 #define HW_HAS_BQ76940
 #define HW_BACK_TO_BACK_MOSFETS
 // Macros
-#define HW_INIT_HOOK()				
-                                    /*/bq76940_init();*/
+#define HW_INIT_HOOK()
+
+#define HW_AFE_INIT()				bq76940_init()//hw_luna_init()
 #define PACK_CONNECT()				bq_request_connect_pack(true)
 #define PACK_DISCONNECT()			bq_request_connect_pack(false)
 #define CHARGE_ENABLE()				bq_request_connect_pack(true)

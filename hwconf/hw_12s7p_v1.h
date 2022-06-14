@@ -25,8 +25,8 @@
 #define HW_NO_CH0_TEST
 
 // HW-specific
-#define HW_INIT_HOOK()			palSetLineMode(LINE_CURR_MEASURE_EN, PAL_MODE_OUTPUT_PUSHPULL)
-
+#define HW_INIT_HOOK()			palSetLineMode(LINE_CURR_MEASURE_EN, PAL_MODE_OUTPUT_PUSHPULL);
+#define HW_AFE_INIT()			ltc_init();
 #define CURR_MEASURE_ON()		palClearLine(LINE_CURR_MEASURE_EN)
 #define CURR_MEASURE_OFF()		palSetLine(LINE_CURR_MEASURE_EN)
 

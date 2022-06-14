@@ -19,6 +19,7 @@
 
 #include "bms_if.h"
 
+
 float hw_temp_cell_max(void) {
 	float res = -250.0;
 

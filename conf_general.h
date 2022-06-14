@@ -50,6 +50,9 @@
 
 //#define HW_HEADER					"hw_rbat.h"
 //#define HW_SOURCE					"hw_rbat.c"
+
+//#define HW_HEADER					"hw_luna_bms.h"
+//#define HW_SOURCE					"hw_luna_bms.c"
 #endif
 
 /*

@@ -26,7 +26,7 @@
 
 // HW-specific
 #define HW_INIT_HOOK()			hw_board_init()
-
+#define HW_AFE_INIT()			ltc_init();
 #define HW_CAN_ON()				palClearLine(LINE_CAN_EN)
 #define HW_CAN_OFF()			palSetLine(LINE_CAN_EN)
 #define CURR_MEASURE_ON()		palClearLine(LINE_CURR_MEASURE_EN)
