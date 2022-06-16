@@ -17,7 +17,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
     */
 
-#include "ltc6813.h"
+//#include "ltc6813.h"
 #include "conf_general.h"
 #include "usbcfg.h"
 #include "pwr.h"

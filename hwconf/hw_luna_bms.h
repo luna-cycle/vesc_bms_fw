@@ -43,7 +43,10 @@
 #define HW_GET_V_TOTAL()			bq_last_pack_voltage()
 #define HW_GET_V_CHARGE()			bq_last_pack_voltage()	//until we implement charge voltage measurement in hw
 #define HW_GET_I_IN()				bq_get_current()		//this hw wont read current using the mcu adc for the forseeable future
-#define HW_GET_I_IN_AFE()			bq_get_current()
+#define HW_GET_I_IN_AFE()			i_bms_ic = bq_get_current();
+#define HW_ZERO_CURRENT_OFFSET  	bq_get_CC_raw()
+#define HW_AFE_SLEEP()				sleep_bq76940()
+#define HW_GET_BAL_TEMP()			hw_luna_get_bal_temp()
 //#define HW_SHUTDOWN_AFE()           bq_shutdown_bq76940()
 
 // Settings
@@ -103,9 +106,9 @@
 
 // Analog
 
-#ifdef HDC1080_SDA_GPIO
-#define LINE_V_CHARGE			PAL_LINE(GPIOC, 2)
-#endif
+//#ifdef HDC1080_SDA_GPIO
+#define LINE_V_CHARGE			PAL_LINE(GPIOC, 2) // TODO why LINE_V_CHARGE depends on HDC1080 sensor?
+//#endif
 
 //LINE_CURRENT not used in this hardware
 #define LINE_CURRENT			PAL_LINE(GPIOC, 3)
@@ -154,5 +157,5 @@
 void hw_luna_init(void);
 float hw_luna_get_temp(int sensors);
 float hw_luna_get_cell_temp_max(void);
-
+float hw_luna_get_bal_temp (void);
 #endif /* HWCONF_HW_LUNA_BMS_H_ */

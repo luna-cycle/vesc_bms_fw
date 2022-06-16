@@ -68,8 +68,19 @@ float hw_luna_get_temp(int sensors){
     }
     return temp;
 }
+//return the highest temp between the internal sensor of AFE and pre regulator
+float hw_luna_get_bal_temp (void)
+{
+	float reg_temp,AFE_temp;
 
+	AFE_temp = bq_get_temp_ic();
+	reg_temp = bq_get_temp(2);
 
+	if(AFE_temp>reg_temp)
+		return AFE_temp;
+	else
+		return reg_temp;
+}
     
 static void terminal_cmd_shipmode(int argc, const char **argv) {
 	(void)argc;
@@ -89,3 +100,6 @@ static void terminal_cmd_connect(int argc, const char **argv) {
     
 	return;
 }
+
+
+

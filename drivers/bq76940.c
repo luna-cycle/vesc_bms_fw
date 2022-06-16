@@ -317,7 +317,7 @@ static THD_FUNCTION(sample_thread, arg) {
 
 		bq76940_Alert_handler();
         
-        timeout_feed_WDT(THREAD_AFE);
+        //timeout_feed_WDT(THREAD_AFE);
     }
 }
 
@@ -677,5 +677,10 @@ void bq_shutdown_bq76940()
     write_reg(BQ_SYS_CTRL1, 0x00);
     write_reg(BQ_SYS_CTRL1, 0x01);
 	write_reg(BQ_SYS_CTRL1, 0x02);
+}
+
+float bq_get_CC_raw(void)
+{
+	return bq_get_current()*bq76940->shunt_res/CC_REG_TO_AMPS_FACTOR;
 }
 #endif

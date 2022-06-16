@@ -23,7 +23,7 @@
 #include <math.h>
 
 #include HW_HEADER
-
+#include HW_DRIVER
 // Default configuration overrides
 #ifndef CONF_CELL_NUM
 #define CONF_CELL_NUM 			HW_CELLS_SERIES

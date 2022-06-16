@@ -186,6 +186,7 @@ float bq_get_temp(int sensor);
 float bq_get_temp_ic(void);
 float bq_get_current(void);
 void bq_connect_pack(bool flag);
+void bq_request_connect_pack(bool flag);
 void sleep_bq76940(void);
-
+float bq_get_CC_raw(void);
 #endif /* BQ76940_H_ */

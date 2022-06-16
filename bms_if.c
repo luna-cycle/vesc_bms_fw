@@ -18,6 +18,7 @@
     */
 
 #include "ltc6813.h"
+#include "bq76940.h"
 #include "main.h"
 #include "bms_if.h"
 #include "pwr.h"
@@ -204,11 +205,11 @@ static THD_FUNCTION(balance_thd, p) {
 
 		for (int i = backup.config.cell_first_index;i <
 		(backup.config.cell_num + backup.config.cell_first_index);i++) {
-			if (ltc_last_cell_voltage(i) > v_max) {
-				v_max = ltc_last_cell_voltage(i);
+			if (HW_LAST_CELL_VOLTAGE(i) > v_max) {
+				v_max = HW_LAST_CELL_VOLTAGE(i);
 			}
-			if (ltc_last_cell_voltage(i) < v_min) {
-				v_min = ltc_last_cell_voltage(i);
+			if (HW_LAST_CELL_VOLTAGE(i) < v_min) {
+				v_min = HW_LAST_CELL_VOLTAGE(i);
 			}
 		}
 
@@ -222,10 +223,10 @@ static THD_FUNCTION(balance_thd, p) {
 				i < (backup.config.cell_num + backup.config.cell_first_index);i++) {
 			if (m_balance_override[i] == 1) {
 				is_balance_override = true;
-				ltc_set_dsc(i, false);
+				HW_SET_DSC(i, false);
 			} else if (m_balance_override[i] == 2) {
 				is_balance_override = true;
-				ltc_set_dsc(i, true);
+				HW_SET_DSC(i, true);
 				bal_ch++;
 				m_is_balancing = true;
 			}
@@ -247,15 +248,15 @@ static THD_FUNCTION(balance_thd, p) {
 			bal_ch = 0;
 			for (int i = backup.config.cell_first_index;i <
 			(backup.config.cell_num + backup.config.cell_first_index);i++) {
-				float limit = ltc_get_dsc(i) ? backup.config.vc_balance_end : backup.config.vc_balance_start;
+				float limit = HW_GET_DSC(i) ? backup.config.vc_balance_end : backup.config.vc_balance_start;
 				limit += v_min;
 
-				if (ltc_last_cell_voltage(i) >= limit) {
-					ltc_set_dsc(i, true);
+				if (HW_LAST_CELL_VOLTAGE(i) >= limit) {
+					HW_SET_DSC(i, true);
 					bal_ch++;
 					m_is_balancing = true;
 				} else {
-					ltc_set_dsc(i, false);
+					HW_SET_DSC(i, false);
 				}
 			}
 		}
@@ -278,13 +279,13 @@ static THD_FUNCTION(balance_thd, p) {
 			int v_min_cell = 0;
 			for (int i = backup.config.cell_first_index;i <
 			(backup.config.cell_num + backup.config.cell_first_index);i++) {
-				if (ltc_last_cell_voltage(i) < v_min && ltc_get_dsc(i)) {
-					v_min = ltc_last_cell_voltage(i);
+				if (HW_LAST_CELL_VOLTAGE(i) < v_min && HW_GET_DSC(i)) {
+					v_min = HW_LAST_CELL_VOLTAGE(i);
 					v_min_cell = i;
 				}
 			}
 
-			ltc_set_dsc(v_min_cell, false);
+			HW_SET_DSC(v_min_cell, false);
 			bal_ch--;
 		}
 
@@ -294,7 +295,7 @@ static THD_FUNCTION(balance_thd, p) {
 			m_bal_ok = false;
 
 			for (int i = 0;i < HW_CELLS_SERIES;i++) {
-				ltc_set_dsc(i, false);
+				HW_SET_DSC(i, false);
 			}
 		}
 
@@ -312,14 +313,10 @@ static THD_FUNCTION(if_thd, p) {
 	chThdSleepMilliseconds(2000);
 
 	for(;;) {
-		float ltc_curr_adc = ltc_last_gpio_voltage(LTC_GPIO_CURR_MON);
-		float i_bms_ic = -(ltc_curr_adc - 1.65 + backup.ic_i_sens_v_ofs) *
-					(1.0 / HW_SHUNT_AMP_GAIN) * (1.0 / backup.config.ext_shunt_res) * IC_ISENSE_I_GAIN_CORR;
-		float i_adc = pwr_get_iin();
 
-		if (ltc_curr_adc <= 0.0) {
-			i_bms_ic = 0.0;
-		}
+		float i_bms_ic = 0;
+		HW_GET_I_IN_AFE();
+		float i_adc = HW_GET_I_IN();
 
 		if (backup.config.i_measure_mode == I_MEASURE_MODE_VESC) {
 			for (int i = 0;i < CAN_STATUS_MSGS_TO_STORE;i++) {
@@ -406,7 +403,7 @@ float bms_if_get_i_in_ic(void) {
 }
 
 float bms_if_get_v_cell(int cell) {
-	return ltc_last_cell_voltage(cell);
+	return HW_LAST_CELL_VOLTAGE(cell);
 }
 
 float bms_if_get_v_cell_min(void) {
@@ -431,15 +428,15 @@ float bms_if_get_v_charge(void) {
 }
 
 float bms_if_get_temp(int sensor) {
-	return pwr_get_temp(sensor);
+	return HW_GET_TEMP(sensor);//pwr_get_temp(sensor);
 }
 
 float bms_if_get_temp_ic(void) {
-	return ltc_last_temp();
+	return HW_GET_TEMP_IC(); //ltc_last_temp();
 }
 
 bool bms_if_is_balancing_cell(int cell) {
-	return ltc_get_dsc(cell);
+	return HW_GET_DSC(cell);
 }
 
 double bms_if_get_ah_cnt(void) {
@@ -514,7 +511,7 @@ void bms_if_force_balance(bool bal_en) {
 	} else {
 		m_bal_ok = false;
 		for (int i = 0;i < HW_CELLS_SERIES;i++) {
-			ltc_set_dsc(i, false);
+			HW_SET_DSC(i, false);
 		}
 	}
 }
@@ -524,7 +521,7 @@ void bms_if_zero_current_offset(void) {
 	float samples = 0.0;
 
 	for (int i = 0;i < 20;i++) {
-		ofs_avg -= ltc_last_gpio_voltage(LTC_GPIO_CURR_MON) - 1.65;
+		ofs_avg -= HW_ZERO_CURRENT_OFFSET;//ltc_last_gpio_voltage(LTC_GPIO_CURR_MON) - 1.65;
 		samples += 1.0;
 		chThdSleepMilliseconds(100);
 	}
@@ -554,11 +551,19 @@ float bms_if_get_humsens_temp_pcb(void) {
 }
 
 float bms_if_get_humsens_hum_ext(void) {
+#ifdef 	SHT30_SDA_GPIO
 	return sht30_get_hum();
+#else
+	return 0.0;
+#endif
 }
 
 float bms_if_get_humsens_temp_ext(void) {
+#ifdef	SHT30_SDA_GPIO
 	return sht30_get_temp();
+#else
+	return 0.0;
+#endif
 }
 
 float bms_if_get_soc(void) {
@@ -576,7 +581,7 @@ float bms_if_get_soh(void) {
 }
 
 void bms_if_sleep(void) {
-	ltc_sleep();
+	HW_AFE_SLEEP();//ltc_sleep();
 }
 
 void bms_if_fault_report(bms_fault_code fault) {
