@@ -117,10 +117,10 @@ static THD_FUNCTION(sleep_thread, arg) {
 			}
 			if (blink < 40) {
 				LED_GREEN_DEBUG_ON();
-                LED_ON(LINE_LED_GREEN);
+                //LED_ON(LINE_LED_GREEN);
 			} else {
                 LED_GREEN_DEBUG_OFF();
-				LED_OFF(LINE_LED_GREEN);
+				//LED_OFF(LINE_LED_GREEN);
 			}
 
 		} else {
@@ -132,8 +132,8 @@ static THD_FUNCTION(sleep_thread, arg) {
 		if (!usb_conf_reset && usb_cdc_configured_cnt() > 0) {
 			m_sleep_timer = 240000;
 			usb_conf_reset = true;
-            //LED_RED_DEBUG_ON();
-			LED_ON(LINE_LED_RED);
+            LED_RED_DEBUG_ON();
+			//LED_ON(LINE_LED_RED);
 		}
 
 		timeout_feed_WDT(THREAD_SLEEP);

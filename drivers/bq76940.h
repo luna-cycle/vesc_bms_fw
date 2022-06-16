@@ -20,11 +20,12 @@
 #ifndef BQ76940_H_
 #define BQ76940_H_
 
+
 // SYS_STATUS bits
 #define NUM_REG			55
 #define ADC_EN			0x10
 #define ADC_DIS			0x00
-#define TEMP_SEL			0x08
+#define TEMP_SEL		0x08
 #define CC_EN			0x40
 #define CC_DIS			0x00
 #define SYS_STAT_DEVICE_XREADY	0x20
@@ -40,22 +41,36 @@
 #define BQ_SCP_200us	(0x02 << 3)
 #define BQ_SCP_400us	(0x03 << 3)
 
-#define BQ_SCP_22mV		0x00
-#define BQ_SCP_33mV 	0x01
-#define BQ_SCP_44mV     0x02
-#define BQ_SCP_56mV     0x03
-#define BQ_SCP_67mV     0x04
-#define BQ_SCP_78mV     0x05
-#define BQ_SCP_89mV     0x06
-#define BQ_SCP_100mV    0x07
-#define BQ_SCP_44mV		0x00
-#define BQ_SCP_67mV		0x01
-#define BQ_SCP_89mV		0x02
-#define BQ_SCP_111mV	0x03
-#define BQ_SCP_133mV	0x04
-#define BQ_SCP_155mV	0x05
-#define BQ_SCP_178mV	0x06
-#define BQ_SCP_200mV	0x07
+#define BQ_SCP_22mV		0x00       
+#define BQ_SCP_33mV   	0x01       
+#define BQ_SCP_44mV     0x02       
+#define BQ_SCP_56mV     0x03       
+#define BQ_SCP_67mV     0x04       
+#define BQ_SCP_78mV     0x05       
+#define BQ_SCP_89mV     0x06       
+#define BQ_SCP_100mV    0x07       
+#define BQ_SCP_111mV 	0x83       
+#define BQ_SCP_133mV 	0x84       
+#define BQ_SCP_155mV 	0x85       
+#define BQ_SCP_178mV 	0x86       
+#define BQ_SCP_200mV 	0x87       
+
+//More abstraction to setup the threshold shortcircuit current
+//Only if only the resistor shunt is 0.5mOhm
+#define current_44A     BQ_SCP_22mV
+#define current_66A     BQ_SCP_33mV
+#define current_88A     BQ_SCP_44mV
+#define current_112A    BQ_SCP_56mV
+#define current_134A    BQ_SCP_67mV
+#define current_156A    BQ_SCP_78mV
+#define current_178A    BQ_SCP_89mV
+#define current_200A    BQ_SCP_100mV
+#define current_222A    BQ_SCP_111mV
+#define current_266A    BQ_SCP_133mV
+#define current_310A    BQ_SCP_155mV
+#define current_356A    BQ_SCP_178mV
+#define current_400A    BQ_SCP_200mV
+
 
 // OCP config
 #define BQ_OCP_8ms		(0x00 << 4)
@@ -67,38 +82,57 @@
 #define BQ_OCP_640ms	(0x06 << 4)
 #define BQ_OCP_1280ms	(0x07 << 4)
 
-#define BQ_OCP_8mV		0x00
-#define BQ_OCP_11mV		0x01
-#define BQ_OCP_14mV		0x02
-#define BQ_OCP_17mV		0x03
-#define BQ_OCP_19mV		0x04
-#define BQ_OCP_22mV		0x05
-#define BQ_OCP_25mV		0x06
-#define BQ_OCP_28mV		0x07
-#define BQ_OCP_31mV		0x08
-#define BQ_OCP_33mV		0x09
-#define BQ_OCP_36mV		0x0A
-#define BQ_OCP_39mV		0x0B
-#define BQ_OCP_42mV		0x0C
-#define BQ_OCP_44mV		0x0D
-#define BQ_OCP_47mV		0x0E
-#define BQ_OCP_50mV		0x0F
-#define BQ_OCP_17mV		0x00
-#define BQ_OCP_22mV		0x01
-#define BQ_OCP_28mV		0x02
-#define BQ_OCP_33mV		0x03
-#define BQ_OCP_39mV		0x04
-#define BQ_OCP_44mV		0x05
-#define BQ_OCP_50mV		0x06
-#define BQ_OCP_56mV		0x07
-#define BQ_OCP_61mV		0x08
-#define BQ_OCP_67mV		0x09
-#define BQ_OCP_72mV		0x0A
-#define BQ_OCP_78mV		0x0B
-#define BQ_OCP_83mV		0x0C
-#define BQ_OCP_89mV		0x0D
-#define BQ_OCP_94mV		0x0E
-#define BQ_OCP_100mV	0x0F
+#define BQ_OCP_8mV		0x00        
+#define BQ_OCP_11mV		0x01        
+#define BQ_OCP_14mV		0x02        
+#define BQ_OCP_17mV		0x03        
+#define BQ_OCP_19mV		0x04        
+#define BQ_OCP_22mV		0x05        
+#define BQ_OCP_25mV		0x06        
+#define BQ_OCP_28mV		0x07        
+#define BQ_OCP_31mV		0x08        
+#define BQ_OCP_33mV		0x09        
+#define BQ_OCP_36mV		0x0A        
+#define BQ_OCP_39mV		0x0B        
+#define BQ_OCP_42mV		0x0C        
+#define BQ_OCP_44mV		0x0D        
+#define BQ_OCP_47mV		0x0E        
+#define BQ_OCP_50mV		0x0F        
+#define BQ_OCP_56mV		(0x87 & 0x7F)        
+#define BQ_OCP_61mV		(0x88 & 0x7F)       
+#define BQ_OCP_67mV		(0x89 & 0x7F)  
+#define BQ_OCP_72mV		(0x8A & 0x7F) 
+#define BQ_OCP_78mV		(0x8B & 0x7F)   
+#define BQ_OCP_83mV		(0x8C & 0x7F)  
+#define BQ_OCP_89mV		(0x8D & 0x7F) 
+#define BQ_OCP_94mV		(0x8E & 0x7F)   
+#define BQ_OCP_100mV 	(0x8F & 0x7F)  
+
+#define current_16A     BQ_OCP_8mV
+#define current_22A     BQ_OCP_11mV
+#define current_28A     BQ_OCP_14mV
+#define current_34A     BQ_OCP_17mV
+#define current_38A     BQ_OCP_19mV
+//#define current_44A     BQ_OCP_22mV
+#define current_50A     BQ_OCP_25mV
+#define current_56A     BQ_OCP_28mV
+#define current_62A     BQ_OCP_31mV
+//#define current_66A     BQ_OCP_33mV
+#define current_72A     BQ_OCP_36mV
+#define current_78A     BQ_OCP_39mV
+#define current_84A     BQ_OCP_42mV
+//#define current_88A     BQ_OCP_44mV
+#define current_94A     BQ_OCP_47mV
+#define current_100A    BQ_OCP_50mV
+//#define current_112A    BQ_OCP_56mV
+#define current_122A    BQ_OCP_61mV
+//#define current_134A    BQ_OCP_67mV
+#define current_144A    BQ_OCP_72mV
+//#define current_156A    BQ_OCP_78mV
+#define current_166A    BQ_OCP_83mV
+//#define current_178A    BQ_OCP_89mV
+#define current_188A    BQ_OCP_94mV
+//#define current_200A    BQ_OCP_100mV
 
 #define BQ_UV_DELAY_1s	(0x00 << 6)
 #define BQ_UV_DELAY_4s	(0x01 << 6)

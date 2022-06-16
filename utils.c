@@ -74,6 +74,7 @@ const char* utils_fault_to_string(bms_fault_code fault) {
 	case FAULT_CODE_CHARGE_OVERTEMP: return "FAULT_CODE_CHARGE_OVERTEMP"; break;
     case FAULT_CODE_CELL_UNDERTEMP: return "FAULT_CODE_CELL_UNDERTEMP"; break;
     case FAULT_CODE_CELL_OVERTEMP: return "FAULT_CODE_CELL_OVERTEMP"; break;
+    case FAULT_CODE_DONT_INIT_AFE: return "FAULT_CODE_DONT_INIT_AFE"; break;
 	default: return "FAULT_UNKNOWN"; break;
 	}
 }

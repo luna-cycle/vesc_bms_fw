@@ -437,11 +437,11 @@ static THD_FUNCTION(if_thd, p) {
 			sleep_reset(); //Originally don't comment
 		}
 #endif
-#ifdef HW_BACK_TO_BACK_MOSFETS
+//#ifdef HW_BACK_TO_BACK_MOSFETS
 		if ( fabs(HW_GET_I_IN()) > backup.config.min_current_sleep) {
             sleep_reset(); //Originally don't comment
 		}
-#endif
+//#endif
 		float soc_now = utils_batt_liion_norm_v_to_capacity(utils_map(m_voltage_cell_min, 3.2, 4.2, 0.0, 1.0));
 		if (!m_soc_filter_init_done) {
 			m_soc_filter_init_done = true;
@@ -465,15 +465,19 @@ static THD_FUNCTION(if_thd, p) {
 			}
 
 			if (blink < 100) {
-				LED_ON(LINE_LED_RED);
+				//LED_ON(LINE_LED_RED);
+                LED_RED_DEBUG_ON();
 			} else {
-				LED_OFF(LINE_LED_RED);
+				//LED_OFF(LINE_LED_RED);
+                LED_GREEN_DEBUG_OFF();
 			}
 		} else {
 			if (m_is_balancing) {
-				LED_ON(LINE_LED_RED);
+				//LED_ON(LINE_LED_RED);
+                LED_RED_DEBUG_ON();
 			} else {
-				LED_OFF(LINE_LED_RED);
+				//LED_OFF(LINE_LED_RED);
+				LED_RED_DEBUG_OFF();
 			}
 		}
 
