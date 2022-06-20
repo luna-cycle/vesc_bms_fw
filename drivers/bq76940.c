@@ -107,10 +107,6 @@ uint8_t CRC8(unsigned char *ptr, unsigned char len,unsigned char key);
 void bq_balance_cells(volatile bool *m_discharge_state);
 uint8_t tripVoltage(float voltage);
 void bq_disconnect_battery(bool disconnect);
-void bq_discharge_enable(void);
-void bq_discharge_disable(void);
-void bq_charge_enable(void);
-void bq_charge_disable(void);
 
 //Macros
 #define READ_ALERT()						palReadPad(BQ76940_ALERT_GPIO, BQ76940_ALERT_PIN)
@@ -181,11 +177,11 @@ uint8_t bq76940_init(void) {
 			error |= write_reg(BQ_PROTECT3, BQ_UV_DELAY_4s);
         
 			// Overcurrent protection
-			error |= write_reg(BQ_PROTECT2, (current_16A | BQ_OCP_8ms ));
+			error |= write_reg(BQ_PROTECT2, (CURRENT_16A | BQ_OCP_8ms ));
 			// Short Circuit Protection
 			//You can set the shortcircuit protection with ...
 			//The delay time could be 70us, 100us, 200us or 400 us
-			error |= write_reg(BQ_PROTECT1, (current_44A | BQ_SCP_70us ));
+			error |= write_reg(BQ_PROTECT1, (CURRENT_44A | BQ_SCP_70us ));
 			
 			// clear SYS-STAT for init
 			write_reg(BQ_SYS_STAT,0xFF);
@@ -607,7 +603,7 @@ void sleep_bq76940()
 	//write_reg(BQ_SYS_CTRL2, CC_DIS);
 }
 
-void bq_shutdown_bq76940()
+void bq_shutdown_bq76940(void)
 {
     //Shutdown everything frontend
     write_reg(BQ_SYS_CTRL1, 0x00);

@@ -48,12 +48,48 @@
 // Settings
 #define HW_ADC_TEMP_SENSORS		8
 #define HW_CELLS_SERIES			14
-#define HW_SHUNT_RES			(0.0005)
 #define HW_SHUNT_AMP_GAIN		(20.0)
 #define V_REG					3.3
 #define R_CHARGE_TOP			(520e3 + 2.5e3 + 100.0)
 #define R_CHARGE_BOTTOM			(10e3)
 #define AFE						bq76940
+
+// Define the current with the shunt resistor value
+#define HW_SHUNT_RES			(0.0005)
+//More abstraction to setup the threshold shortcircuit current
+//Only if only the resistor shunt is 0.5mOhm
+#define CURRENT_44A     BQ_SCP_22mV
+#define CURRENT_66A     BQ_SCP_33mV
+#define CURRENT_88A     BQ_SCP_44mV
+#define CURRENT_112A    BQ_SCP_56mV
+#define CURRENT_134A    BQ_SCP_67mV
+#define CURRENT_156A    BQ_SCP_78mV
+#define CURRENT_178A    BQ_SCP_89mV
+#define CURRENT_200A    BQ_SCP_100mV
+#define CURRENT_222A    BQ_SCP_111mV
+#define CURRENT_266A    BQ_SCP_133mV
+#define CURRENT_310A    BQ_SCP_155mV
+#define CURRENT_356A    BQ_SCP_178mV
+#define CURRENT_400A    BQ_SCP_200mV
+
+//Values for OverCurrent setting
+#define CURRENT_16A		BQ_OCP_8mV
+#define CURRENT_22A		BQ_OCP_11mV
+#define CURRENT_28A		BQ_OCP_14mV
+#define CURRENT_34A		BQ_OCP_17mV
+#define CURRENT_38A		BQ_OCP_19mV
+#define CURRENT_50A		BQ_OCP_25mV
+#define CURRENT_56A		BQ_OCP_28mV
+#define CURRENT_62A		BQ_OCP_31mV
+#define CURRENT_72A		BQ_OCP_36mV
+#define CURRENT_78A		BQ_OCP_39mV
+#define CURRENT_84A		BQ_OCP_42mV
+#define CURRENT_94A		BQ_OCP_47mV
+#define CURRENT_100A	BQ_OCP_50mV
+#define CURRENT_122A	BQ_OCP_61mV
+#define CURRENT_144A	BQ_OCP_72mV
+#define CURRENT_166A	BQ_OCP_83mV
+#define CURRENT_188A	BQ_OCP_94mV
 
 // LEDs
 //#define LINE_LED_RED			PAL_LINE(GPIOA, 0)
