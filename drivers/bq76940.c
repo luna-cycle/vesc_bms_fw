@@ -28,7 +28,7 @@
 #include "math.h"
 #include "stm32l4xx_hal.h"
 #include "sleep.h"
-
+#include "conf_general.h"
 #ifdef HW_HAS_BQ76940
 
 #define MAX_CELL_NUM		15
@@ -681,6 +681,6 @@ void bq_shutdown_bq76940()
 
 float bq_get_CC_raw(void)
 {
-	return bq_get_current()*bq76940->shunt_res/CC_REG_TO_AMPS_FACTOR;
+	return bq_get_current() * bq76940->shunt_res / CC_REG_TO_AMPS_FACTOR;
 }
 #endif

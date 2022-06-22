@@ -37,10 +37,10 @@
 #define HW_LAST_CELL_VOLTAGE(i)	ltc_last_cell_voltage(i)
 #define HW_SET_DSC(cell, set)	ltc_set_dsc(cell,set)
 #define HW_GET_DSC(cell)		ltc_get_dsc(cell)
-#define HW_GET_I_IN_AFE()		if(ltc_last_gpio_voltage(LTC_GPIO_CURR_MON)<=0.0)\
+#define HW_GET_I_IN_AFE			if(ltc_last_gpio_voltage(LTC_GPIO_CURR_MON)<=0.0)\
 									i_bms_ic = 0.0;\
 								else\
-								i_bms_ic = -(ltc_last_gpio_voltage(LTC_GPIO_CURR_MON) - 1.65 + backup.ic_i_sens_v_ofs) *	(1.0 / HW_SHUNT_AMP_GAIN) * (1.0 / backup.config.ext_shunt_res) * IC_ISENSE_I_GAIN_CORR;
+								i_bms_ic = -(ltc_last_gpio_voltage(LTC_GPIO_CURR_MON) - 1.65 + backup.ic_i_sens_v_ofs) *	(1.0 / HW_SHUNT_AMP_GAIN) * (1.0 / backup.config.ext_shunt_res) * IC_ISENSE_I_GAIN_CORR
 #define HW_GET_I_IN()			pwr_get_iin()
 #define HW_GET_TEMP(sensor)		pwr_get_temp(sensor)
 #define HW_GET_TEMP_IC()		ltc_last_temp()

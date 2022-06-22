@@ -34,6 +34,17 @@
 #include "mcuconf.h"
 
 /**
+ * @brief   Specific HW defines
+ */
+#ifdef HW_HAL_USE_I2C2
+#define HAL_USE_I2C		TRUE
+#endif
+
+#ifdef HW_PAL_USE_WHAIT
+#define PAL_USE_WAIT	TRUE
+#endif
+
+/**
  * @brief   Enables the PAL subsystem.
  */
 #if !defined(HAL_USE_PAL) || defined(__DOXYGEN__)
@@ -86,7 +97,7 @@
  * @brief   Enables the I2C subsystem.
  */
 #if !defined(HAL_USE_I2C) || defined(__DOXYGEN__)
-#define HAL_USE_I2C                         TRUE
+#define HAL_USE_I2C                         FALSE
 #endif
 
 /**
@@ -218,7 +229,7 @@
  * @note    Disabling this option saves both code and data space.
  */
 #if !defined(PAL_USE_WAIT) || defined(__DOXYGEN__)
-#define PAL_USE_WAIT                        TRUE
+#define PAL_USE_WAIT                        FALSE
 #endif
 
 /*===========================================================================*/

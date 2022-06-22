@@ -17,7 +17,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
     */
 
-//#include "ltc6813.h"
+#include "ltc6813.h"
 #include "conf_general.h"
 #include "usbcfg.h"
 #include "pwr.h"
@@ -173,7 +173,7 @@ int main(void) {
 	}
 
 	pwr_init();
-	HW_AFE_INIT();//ltc_init();
+	HW_AFE_INIT();
 	bms_if_init();
 	comm_can_init();
 	comm_can_set_baud(backup.config.can_baud_rate);

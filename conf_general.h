@@ -37,29 +37,24 @@
 #define VAR_INIT_CODE				59763258
 
 #define HW_NAME_MAX_CHARS			16
-
+/*
 #if !defined(HW_SOURCE) && !defined(HW_HEADER)
-#define HW_HEADER					"hw_12s7p_v1.h"
-#define HW_SOURCE					"hw_12s7p_v1.c"
-#define HW_DRIVER					"ltc6813.h"
+//#define HW_HEADER					"hw_12s7p_v1.h"
+//#define HW_SOURCE					"hw_12s7p_v1.c"
 
 //#define HW_HEADER					"hw_18s_light.h"
 //#define HW_SOURCE					"hw_18s_light.c"
-//#define HW_DRIVER					"ltc6813.h"
 
 //#define HW_HEADER					"hw_stormcore_bms.h"
 //#define HW_SOURCE					"hw_stormcore_bms.c"
-//#define HW_DRIVER					"ltc6813.h"
 
 //#define HW_HEADER					"hw_rbat.h"
 //#define HW_SOURCE					"hw_rbat.c"
-//#define HW_DRIVER					"ltc6813.h"
 
-//#define HW_HEADER					"hw_luna_bms.h"
-//#define HW_SOURCE					"hw_luna_bms.c"
-//#define HW_DRIVER					"bq76940.h"
+#define HW_HEADER					"hw_luna_bms.h"
+#define HW_SOURCE					"hw_luna_bms.c"
 #endif
-
+*/
 /*
  * Enable blackmagic probe
  */

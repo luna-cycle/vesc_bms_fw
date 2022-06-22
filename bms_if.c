@@ -315,7 +315,7 @@ static THD_FUNCTION(if_thd, p) {
 	for(;;) {
 
 		float i_bms_ic = 0;
-		HW_GET_I_IN_AFE();
+		HW_GET_I_IN_AFE;
 		float i_adc = HW_GET_I_IN();
 
 		if (backup.config.i_measure_mode == I_MEASURE_MODE_VESC) {

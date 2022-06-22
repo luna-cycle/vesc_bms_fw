@@ -27,10 +27,13 @@
 // HW-specific
 #define HW_HAS_BQ76940
 #define HW_BACK_TO_BACK_MOSFETS
+#define HW_HAL_USE_I2C2
+#define HW_USE_HSI16
+#define HW_PAL_USE_WHAIT
 // Macros
 #define HW_INIT_HOOK()
 
-#define HW_AFE_INIT()				bq76940_init()//hw_luna_init()
+#define HW_AFE_INIT()				bq76940_init()
 #define PACK_CONNECT()				bq_request_connect_pack(true)
 #define PACK_DISCONNECT()			bq_request_connect_pack(false)
 #define CHARGE_ENABLE()				bq_request_connect_pack(true)
@@ -43,7 +46,7 @@
 #define HW_GET_V_TOTAL()			bq_last_pack_voltage()
 #define HW_GET_V_CHARGE()			bq_last_pack_voltage()	//until we implement charge voltage measurement in hw
 #define HW_GET_I_IN()				bq_get_current()		//this hw wont read current using the mcu adc for the forseeable future
-#define HW_GET_I_IN_AFE()			i_bms_ic = bq_get_current();
+#define HW_GET_I_IN_AFE				i_bms_ic = bq_get_current()
 #define HW_ZERO_CURRENT_OFFSET  	bq_get_CC_raw()
 #define HW_AFE_SLEEP()				sleep_bq76940()
 #define HW_GET_BAL_TEMP()			hw_luna_get_bal_temp()
@@ -107,8 +110,8 @@
 // Analog
 
 //#ifdef HDC1080_SDA_GPIO
-#define LINE_V_CHARGE			PAL_LINE(GPIOC, 2) // TODO why LINE_V_CHARGE depends on HDC1080 sensor?
-//#endif
+#define LINE_V_CHARGE			PAL_LINE(GPIOC, 2) // (GPIOC,2) is defined as analog input in pwr.c, in luna hw is redefined as output to enable tempsensors
+//#endif											// we keep "LINE_V_CHARGE" defined to avoid compile error in pwr.c
 
 //LINE_CURRENT not used in this hardware
 #define LINE_CURRENT			PAL_LINE(GPIOC, 3)
