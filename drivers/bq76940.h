@@ -20,11 +20,12 @@
 #ifndef BQ76940_H_
 #define BQ76940_H_
 
+
 // SYS_STATUS bits
 #define NUM_REG			55
 #define ADC_EN			0x10
 #define ADC_DIS			0x00
-#define TEMP_SEL			0x08
+#define TEMP_SEL		0x08
 #define CC_EN			0x40
 #define CC_DIS			0x00
 #define SYS_STAT_DEVICE_XREADY	0x20
@@ -41,21 +42,18 @@
 #define BQ_SCP_400us	(0x03 << 3)
 
 #define BQ_SCP_22mV		0x00
-#define BQ_SCP_33mV 	0x01
-#define BQ_SCP_44mV     0x02
-#define BQ_SCP_56mV     0x03
-#define BQ_SCP_67mV     0x04
-#define BQ_SCP_78mV     0x05
-#define BQ_SCP_89mV     0x06
-#define BQ_SCP_100mV    0x07
-#define BQ_SCP_44mV		0x00
-#define BQ_SCP_67mV		0x01
-#define BQ_SCP_89mV		0x02
-#define BQ_SCP_111mV	0x03
-#define BQ_SCP_133mV	0x04
-#define BQ_SCP_155mV	0x05
-#define BQ_SCP_178mV	0x06
-#define BQ_SCP_200mV	0x07
+#define BQ_SCP_33mV		0x01
+#define BQ_SCP_44mV		0x02
+#define BQ_SCP_56mV		0x03
+#define BQ_SCP_67mV		0x04
+#define BQ_SCP_78mV		0x05
+#define BQ_SCP_89mV		0x06
+#define BQ_SCP_100mV	0x07
+#define BQ_SCP_111mV	0x83
+#define BQ_SCP_133mV 	0x84
+#define BQ_SCP_155mV 	0x85
+#define BQ_SCP_178mV 	0x86
+#define BQ_SCP_200mV 	0x87
 
 // OCP config
 #define BQ_OCP_8ms		(0x00 << 4)
@@ -83,22 +81,15 @@
 #define BQ_OCP_44mV		0x0D
 #define BQ_OCP_47mV		0x0E
 #define BQ_OCP_50mV		0x0F
-#define BQ_OCP_17mV		0x00
-#define BQ_OCP_22mV		0x01
-#define BQ_OCP_28mV		0x02
-#define BQ_OCP_33mV		0x03
-#define BQ_OCP_39mV		0x04
-#define BQ_OCP_44mV		0x05
-#define BQ_OCP_50mV		0x06
-#define BQ_OCP_56mV		0x07
-#define BQ_OCP_61mV		0x08
-#define BQ_OCP_67mV		0x09
-#define BQ_OCP_72mV		0x0A
-#define BQ_OCP_78mV		0x0B
-#define BQ_OCP_83mV		0x0C
-#define BQ_OCP_89mV		0x0D
-#define BQ_OCP_94mV		0x0E
-#define BQ_OCP_100mV	0x0F
+#define BQ_OCP_56mV		(0x87 & 0x7F)
+#define BQ_OCP_61mV		(0x88 & 0x7F)
+#define BQ_OCP_67mV		(0x89 & 0x7F)
+#define BQ_OCP_72mV		(0x8A & 0x7F)
+#define BQ_OCP_78mV		(0x8B & 0x7F)
+#define BQ_OCP_83mV		(0x8C & 0x7F)
+#define BQ_OCP_89mV		(0x8D & 0x7F)
+#define BQ_OCP_94mV		(0x8E & 0x7F)
+#define BQ_OCP_100mV 	(0x8F & 0x7F)
 
 #define BQ_UV_DELAY_1s	(0x00 << 6)
 #define BQ_UV_DELAY_4s	(0x01 << 6)
@@ -189,4 +180,10 @@ void bq_connect_pack(bool flag);
 void bq_request_connect_pack(bool flag);
 void sleep_bq76940(void);
 float bq_get_CC_raw(void);
+void bq_shutdown_bq76940(void);
+void bq_discharge_enable(void);
+void bq_discharge_disable(void);
+void bq_charge_enable(void);
+void bq_charge_disable(void);
+
 #endif /* BQ76940_H_ */

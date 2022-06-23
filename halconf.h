@@ -41,7 +41,12 @@
 #endif
 
 #ifdef HW_PAL_USE_WHAIT
-#define PAL_USE_WAIT	TRUE
+#define PAL_USE_CALLBACKS   FALSE
+#define PAL_USE_WAIT		TRUE
+#endif
+
+#ifdef WH_CAN_USE_SLEEP_MODE
+#define CAN_USE_SLEEP_MODE	TRUE
 #endif
 
 /**

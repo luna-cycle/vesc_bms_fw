@@ -43,7 +43,8 @@ static float m_v_cell[MAX_CELL_NUM];
 static volatile bool m_discharge_state[MAX_CELL_NUM] = {false};
 
 
-typedef struct __attribute__((packed)) {
+//typedef struct __attribute__((packed)) {
+typedef struct {
 	i2c_bb_state m_i2c;
 	bool mutex;
 	bool initialized;
@@ -94,10 +95,6 @@ static THD_FUNCTION(sample_thread, arg);
 // Private functions
 float bq_read_CC(void);
 int8_t bq_read_gain(float *gain);
-int8_t current_discharge_protect_set(uint8_t time1,
-								     uint8_t short_circuit_current,
-									 uint8_t time2,
-									 uint8_t overcurrent);
 void status_load_removal_discharge(void);
 int8_t bq_read_offsets(float *offset);
 void bq_read_temps(volatile float *temps);
@@ -105,16 +102,12 @@ float bq_read_temp_ic(void);
 void iin_measure(float *value_iin);
 uint8_t write_reg(uint8_t reg, uint16_t val);
 static void read_cell_voltages(float *m_v_cell);
-static void read_v_batt(float *v_bat);
+static void read_v_batt(volatile float *v_bat);
 uint8_t read_reg(uint8_t reg);
 uint8_t CRC8(unsigned char *ptr, unsigned char len,unsigned char key);
 void bq_balance_cells(volatile bool *m_discharge_state);
 uint8_t tripVoltage(float voltage);
 void bq_disconnect_battery(bool disconnect);
-void bq_discharge_enable(void);
-void bq_discharge_disable(void);
-void bq_charge_enable(void);
-void bq_charge_disable(void);
 
 //Macros
 #define READ_ALERT()						palReadPad(BQ76940_ALERT_GPIO, BQ76940_ALERT_PIN)
@@ -145,7 +138,9 @@ uint8_t bq76940_init(void) {
 	palSetPadMode(GPIOB, 11, PAL_STM32_OTYPE_OPENDRAIN
 							| PAL_MODE_ALTERNATE(4) );
 	i2cStart(&I2CD2, &i2cfg1);
-
+	//This variable is to detect any error in the bq's initialized
+	//error = 0 -> succeful
+	//error = 1 -> problem
 	uint8_t error = 0;
 
 	// make sure the bq is booted up--->set TS1 to 3.3V and back to VSS
@@ -168,38 +163,45 @@ uint8_t bq76940_init(void) {
 	if((read_reg(BQ_SYS_CTRL1) & 0x08) == 0x00) {	//ADC_EN '1' in normal mode
 		if(read_reg(BQ_SYS_CTRL2) == 0x00) {
 
-		// enable ADC and thermistors
-		error |= write_reg(BQ_SYS_CTRL1, (ADC_EN | TEMP_SEL));
+			// enable ADC and thermistors
+			error |= write_reg(BQ_SYS_CTRL1, (ADC_EN | TEMP_SEL));
 		
-        // write 0x19 to CC_CFG according to datasheet page 39
-		error |= write_reg(BQ_CC_CFG, 0x19);
+			// write 0x19 to CC_CFG according to datasheet page 39
+			error |= write_reg(BQ_CC_CFG, 0x19);
 		
-        //OverVoltage threshold
-        error |= write_reg(BQ_OV_TRIP, tripVoltage(4.25));
-        error |= write_reg(BQ_PROTECT3, BQ_OV_DELAY_4s);
-        //UnderVoltage threshold
-		error |= write_reg(BQ_UV_TRIP, tripVoltage(2.80));
-        error |= write_reg(BQ_PROTECT3, BQ_UV_DELAY_4s);
+			//OverVoltage threshold
+			error |= write_reg(BQ_OV_TRIP, tripVoltage(4.25));
+			error |= write_reg(BQ_PROTECT3, BQ_OV_DELAY_4s);
+			//UnderVoltage threshold
+			error |= write_reg(BQ_UV_TRIP, tripVoltage(2.80));
+			error |= write_reg(BQ_PROTECT3, BQ_UV_DELAY_4s);
         
-        // Short Circuit Protection
-        current_discharge_protect_set(BQ_SCP_70us, BQ_SCP_22mV,BQ_OCP_8ms,BQ_OCP_8mV);  
-		//Here we need use the error variable
-        
-		// clear SYS-STAT for init
-		write_reg(BQ_SYS_STAT,0xFF);
+			// Overcurrent protection
+			error |= write_reg(BQ_PROTECT2, (CURRENT_16A | BQ_OCP_8ms ));
+			// Short Circuit Protection
+			//You can set the shortcircuit protection with ...
+			//The delay time could be 70us, 100us, 200us or 400 us
+			error |= write_reg(BQ_PROTECT1, (CURRENT_44A | BQ_SCP_70us ));
 
-		// enable countinous reading of the Coulomb Counter
-		error |= write_reg(BQ_SYS_CTRL2, CC_EN);	// sets ALERT at 250ms interval
+			// clear SYS-STAT for init
+			write_reg(BQ_SYS_STAT,0xFF);
+
+			// enable countinous reading of the Coulomb Counter
+			error |= write_reg(BQ_SYS_CTRL2, CC_EN);	// sets ALERT at 250ms interval
+
+			chThdSleepMilliseconds(10);
+			write_reg(BQ_SYS_STAT,0xFF);
+			chThdSleepMilliseconds(10);
+
+			//Connect the pack
+			bq_connect_pack(true);
 		
-		chThdSleepMilliseconds(10);
-		write_reg(BQ_SYS_STAT,0xFF);
-		chThdSleepMilliseconds(10);
-
-		//Connect the pack
-		bq_connect_pack(true);    
-
-		// Mark the AFE as initialized for the next post-sleep resets
-		bq76940->initialized = true;
+			// Mark the AFE as initialized for the next post-sleep resets
+			if (error == 0){
+				bq76940->initialized = true;
+			} else {
+				bq76940->initialized = false;
+			}
 		}
 	}
 
@@ -211,9 +213,7 @@ uint8_t bq76940_init(void) {
 
 	palEnablePadEvent(GPIOA, 2U, PAL_EVENT_MODE_RISING_EDGE);
 
-//	LED_RED_DEBUG_OFF();
-
-	return error; // 0 if successful
+	return error;
 }
 
 
@@ -295,7 +295,9 @@ void bq76940_Alert_handler(void) {
 	if ( sys_stat & SYS_STAT_OCD ) {
 		bms_if_fault_report(FAULT_CODE_DISCHARGE_OVERCURRENT);
 	}
-	
+	if( bq76940->initialized == false ){
+		bms_if_fault_report(FAULT_CODE_DONT_INIT_AFE);
+	}
 	// Clear Status Register. This will clear the Alert pin so its ready
 	// for the next event in 250ms
 	write_reg(BQ_SYS_STAT,0xFF);
@@ -574,77 +576,6 @@ void bq_balance_cells(volatile bool *m_discharge_state) {
 	return;
 }
 
-int8_t current_discharge_protect_set(uint8_t time1,
-									 uint8_t current_short_circuit,
-									 uint8_t time2,
-									 uint8_t overcurrent)
-{
-   
-    if ((overcurrent == BQ_OCP_17mV) ||
-        (overcurrent == BQ_OCP_22mV) ||
-        (overcurrent == BQ_OCP_28mV) ||
-        (overcurrent == BQ_OCP_33mV) ||
-        (overcurrent == BQ_OCP_39mV) ||
-        (overcurrent == BQ_OCP_44mV) ||
-        (overcurrent == BQ_OCP_50mV) ||
-        (overcurrent == BQ_OCP_56mV) ||
-        (overcurrent == BQ_OCP_61mV) ||
-        (overcurrent == BQ_OCP_67mV) ||
-        (overcurrent == BQ_OCP_72mV) ||
-        (overcurrent == BQ_OCP_78mV) ||
-        (overcurrent == BQ_OCP_83mV) ||
-        (overcurrent == BQ_OCP_89mV) ||
-        (overcurrent == BQ_OCP_94mV) ||
-        (overcurrent == BQ_OCP_100mV))
-    {
-        if((current_short_circuit == BQ_SCP_44mV) 	||
-           (current_short_circuit == BQ_SCP_67mV) 	||
-           (current_short_circuit == BQ_SCP_89mV) 	||
-           (current_short_circuit == BQ_SCP_111mV) 	||
-           (current_short_circuit == BQ_SCP_133mV) 	||
-           (current_short_circuit == BQ_SCP_155mV) 	||
-           (current_short_circuit == BQ_SCP_178mV) 	||
-           (current_short_circuit == BQ_SCP_200mV))  
-		{
-			write_reg(BQ_PROTECT1, ( 0x80 | time1 | current_short_circuit )); //RSNS is set to one
-			write_reg(BQ_PROTECT2, ( time2 | overcurrent ));
-		}
-    }    
-    
-    if ((overcurrent == BQ_OCP_8mV) ||
-        (overcurrent == BQ_OCP_11mV) ||
-        (overcurrent == BQ_OCP_14mV) ||
-        (overcurrent == BQ_OCP_17mV) ||
-        (overcurrent == BQ_OCP_19mV) ||
-        (overcurrent == BQ_OCP_22mV) ||
-        (overcurrent == BQ_OCP_25mV) ||
-        (overcurrent == BQ_OCP_28mV) ||
-        (overcurrent == BQ_OCP_31mV) ||
-        (overcurrent == BQ_OCP_33mV) ||
-        (overcurrent == BQ_OCP_36mV) ||
-        (overcurrent == BQ_OCP_39mV) ||
-        (overcurrent == BQ_OCP_42mV) ||
-        (overcurrent == BQ_OCP_44mV) ||
-        (overcurrent == BQ_OCP_47mV) ||
-        (overcurrent == BQ_OCP_50mV))
-    {
-        if((current_short_circuit == BQ_SCP_22mV) 	||
-           (current_short_circuit == BQ_SCP_33mV) 	||
-           (current_short_circuit == BQ_SCP_44mV) 	||
-           (current_short_circuit == BQ_SCP_56mV) 	||
-           (current_short_circuit == BQ_SCP_67mV) 	||
-           (current_short_circuit == BQ_SCP_78mV) 	||
-           (current_short_circuit == BQ_SCP_89mV) 	||
-           (current_short_circuit == BQ_SCP_100mV))
-		{
-			write_reg(BQ_PROTECT1, ( time1 | current_short_circuit ));
-			write_reg(BQ_PROTECT2, ( time2 | overcurrent ));
-		}	
-	}
-	
-	return 0;
-}
-
 void status_load_removal_discharge()
 {
 	if(LOAD_REMOVAL_DISCHARGE()){
@@ -658,7 +589,7 @@ void status_load_removal_discharge()
 		}
 }
 
-static void read_v_batt(float *v_bat){
+static void read_v_batt(volatile float *v_bat){
 	uint16_t BAT_hi = read_reg(BQ_BAT_HI);
 	uint16_t BAT_lo = read_reg(BQ_BAT_LO);
 	
@@ -671,7 +602,7 @@ void sleep_bq76940()
 	//write_reg(BQ_SYS_CTRL2, CC_DIS);
 }
 
-void bq_shutdown_bq76940()
+void bq_shutdown_bq76940(void)
 {
     //Shutdown everything frontend
     write_reg(BQ_SYS_CTRL1, 0x00);
