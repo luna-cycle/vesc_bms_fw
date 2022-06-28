@@ -466,7 +466,7 @@ static THD_FUNCTION(if_thd, p) {
 
 			if (blink < 100) {
 				//LED_ON(LINE_LED_RED);
-                LED_RED_DEBUG_ON();
+                //LED_RED_DEBUG_ON();
 			} else {
 				//LED_OFF(LINE_LED_RED);
                 LED_GREEN_DEBUG_OFF();
@@ -474,10 +474,10 @@ static THD_FUNCTION(if_thd, p) {
 		} else {
 			if (m_is_balancing) {
 				//LED_ON(LINE_LED_RED);
-                LED_RED_DEBUG_ON();
+                //LED_RED_DEBUG_ON();
 			} else {
 				//LED_OFF(LINE_LED_RED);
-				LED_RED_DEBUG_OFF();
+				//LED_RED_DEBUG_OFF();
 			}
 		}
 

@@ -42,14 +42,14 @@
 #define BQ_SCP_400us	(0x03 << 3)
 
 #define BQ_SCP_22mV		0x00       
-#define BQ_SCP_33mV		0x01       
-#define BQ_SCP_44mV		0x02       
-#define BQ_SCP_56mV		0x03       
-#define BQ_SCP_67mV		0x04       
-#define BQ_SCP_78mV		0x05       
-#define BQ_SCP_89mV		0x06       
-#define BQ_SCP_100mV	0x07       
-#define BQ_SCP_111mV	0x83       
+#define BQ_SCP_33mV   	0x01       
+#define BQ_SCP_44mV     0x02       
+#define BQ_SCP_56mV     0x03       
+#define BQ_SCP_67mV     0x04       
+#define BQ_SCP_78mV     0x05       
+#define BQ_SCP_89mV     0x06       
+#define BQ_SCP_100mV    0x07       
+#define BQ_SCP_111mV 	0x83       
 #define BQ_SCP_133mV 	0x84       
 #define BQ_SCP_155mV 	0x85       
 #define BQ_SCP_178mV 	0x86       
@@ -78,7 +78,7 @@
 #define BQ_OCP_36mV		0x0A        
 #define BQ_OCP_39mV		0x0B        
 #define BQ_OCP_42mV		0x0C        
-#define BQ_OCP_44mV		0x0D         
+#define BQ_OCP_44mV		0x0D        
 #define BQ_OCP_47mV		0x0E        
 #define BQ_OCP_50mV		0x0F        
 #define BQ_OCP_56mV		(0x87 & 0x7F)        
@@ -90,6 +90,7 @@
 #define BQ_OCP_89mV		(0x8D & 0x7F) 
 #define BQ_OCP_94mV		(0x8E & 0x7F)   
 #define BQ_OCP_100mV 	(0x8F & 0x7F)  
+
 
 #define BQ_UV_DELAY_1s	(0x00 << 6)
 #define BQ_UV_DELAY_4s	(0x01 << 6)
@@ -176,12 +177,12 @@ float bq_last_cell_voltage(int cell);
 float bq_get_temp(int sensor);
 float bq_get_temp_ic(void);
 float bq_get_current(void);
+void bq_request_connect_pack(bool flag); 
 void bq_connect_pack(bool flag);
 void sleep_bq76940(void);
-void bq_shutdown_bq76940(void);
 void bq_discharge_enable(void);
 void bq_discharge_disable(void);
 void bq_charge_enable(void);
 void bq_charge_disable(void);
-
+void bq_shutdown_bq76940(void);
 #endif /* BQ76940_H_ */

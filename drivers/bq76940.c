@@ -84,9 +84,6 @@ static I2CConfig i2cfg1 = {
 	    0,              // CR2
 };
 
-
-
-
 // Threads
 static THD_WORKING_AREA(sample_thread_wa, 512);
 static THD_FUNCTION(sample_thread, arg);
@@ -171,17 +168,17 @@ uint8_t bq76940_init(void) {
 		
 			//OverVoltage threshold
 			error |= write_reg(BQ_OV_TRIP, tripVoltage(4.25));
-			error |= write_reg(BQ_PROTECT3, BQ_OV_DELAY_4s);
+			error |= write_reg(BQ_PROTECT3, BQ_OV_DELAY_8s);
 			//UnderVoltage threshold
 			error |= write_reg(BQ_UV_TRIP, tripVoltage(2.80));
 			error |= write_reg(BQ_PROTECT3, BQ_UV_DELAY_4s);
         
 			// Overcurrent protection
-			error |= write_reg(BQ_PROTECT2, (CURRENT_16A | BQ_OCP_8ms ));
+			error |= write_reg(BQ_PROTECT2, (current_16A | BQ_OCP_8ms ));
 			// Short Circuit Protection
 			//You can set the shortcircuit protection with ...
 			//The delay time could be 70us, 100us, 200us or 400 us
-			error |= write_reg(BQ_PROTECT1, (CURRENT_44A | BQ_SCP_70us ));
+			error |= write_reg(BQ_PROTECT1, (current_44A | BQ_SCP_70us ));
 			
 			// clear SYS-STAT for init
 			write_reg(BQ_SYS_STAT,0xFF);
@@ -220,32 +217,64 @@ uint8_t bq76940_init(void) {
 
 // This function will be executed when the Alert pin is driven to '1' by the AFE
 void bq76940_Alert_handler(void) {
-//	LED_GREEN_DEBUG_ON();
-		
+	
 	// Read Status Register
 	uint8_t sys_stat = read_reg(BQ_SYS_STAT);
-    
+	// Report fault codes
+	if ( sys_stat & SYS_STAT_DEVICE_XREADY ) {
+		//handle error
+	}
+	if ( sys_stat & SYS_STAT_OVRD_ALERT ) {
+		//handle error
+	}
+	if ( sys_stat & SYS_STAT_UV ) {
+		bms_if_fault_report(FAULT_CODE_CELL_UNDERVOLTAGE);
+	}
+	if ( sys_stat & SYS_STAT_OV ) {
+		bms_if_fault_report(FAULT_CODE_CELL_OVERVOLTAGE);
+	}
+	if ( sys_stat & SYS_STAT_SCD ) {
+		bms_if_fault_report(FAULT_CODE_DISCHARGE_SHORT_CIRCUIT);
+	}
+	if ( sys_stat & SYS_STAT_OCD ) {
+		bms_if_fault_report(FAULT_CODE_DISCHARGE_OVERCURRENT);
+	}
+	if( bq76940->initialized == false ){
+		bms_if_fault_report(FAULT_CODE_DONT_INIT_AFE);
+	}
+	// Clear Status Register. This will clear the Alert pin so its ready
+	// for the next event in 250ms
+	write_reg(BQ_SYS_STAT,0xFF);
+	
 	//Read pack current
 	bq76940->CC = bq_read_CC();
-    
+
 	// Read the state of connection pack
-	static uint8_t	buff;
+/*	static uint8_t	buff = 0;
+	if(LOAD_REMOVAL_DISCHARGE() == true){
+		LED_RED_DEBUG_ON();
+	}
+	else{
+		LED_RED_DEBUG_OFF();
+	}
 	
-	if( (((buff = read_reg(BQ_SYS_CTRL2)) & 0x03) == 0x02) || //Problem in Charge
-        (((buff = read_reg(BQ_SYS_CTRL2)) & 0x03) == 0x01) ){ //Problem with UV,SC or OC
-		bq_connect_pack(false); //Disconnect the the pins charge and discharge.
-		bq76940->is_connected_pack = false;
+	if( (((read_reg(BQ_SYS_CTRL2)) & 0x01) == 0x00) || //Problem in Charge
+        (((read_reg(BQ_SYS_CTRL2)) & 0x02) == 0x00) ){ //Problem with UV,SC or OC
+		//bq_connect_pack(false); //Disconnect the the pins charge and discharge.
+		//bq76940->is_connected_pack = false;
+		if( bq76940->is_connected_pack ){
+			bq_connect_pack(bq76940->request_connection_pack);
+		}	
     }
     else{
 		bq76940->is_connected_pack = true;
+		//Connect the pack if the High level request the connection
 	}
 	
-	//Connect the pack if the High level request the connection
 	if( bq76940->is_connected_pack ){
 		bq_connect_pack(bq76940->request_connection_pack);
-    }
-	//commands_printf("is connected pack = %d", (read_reg(BQ_SYS_STAT) & 0x0F) );
-	
+	}	
+*/
 	// Every 1 second make the long read
 	static uint8_t i = 0;
     
@@ -277,34 +306,6 @@ void bq76940_Alert_handler(void) {
 		temp_sensing_state = 0;
 	}
 	
-	// Report fault codes
-	if ( sys_stat & SYS_STAT_DEVICE_XREADY ) {
-		//handle error
-	}
-	if ( sys_stat & SYS_STAT_OVRD_ALERT ) {
-		//handle error
-	}
-	if ( sys_stat & SYS_STAT_UV ) {
-		bms_if_fault_report(FAULT_CODE_CELL_UNDERVOLTAGE);
-	}
-	if ( sys_stat & SYS_STAT_OV ) {
-		bms_if_fault_report(FAULT_CODE_CELL_OVERVOLTAGE);
-	}
-	if ( sys_stat & SYS_STAT_SCD ) {
-		bms_if_fault_report(FAULT_CODE_DISCHARGE_SHORT_CIRCUIT);
-	}
-	if ( sys_stat & SYS_STAT_OCD ) {
-		bms_if_fault_report(FAULT_CODE_DISCHARGE_OVERCURRENT);
-	}
-	if( bq76940->initialized == false ){
-		bms_if_fault_report(FAULT_CODE_DONT_INIT_AFE);
-	}
-	// Clear Status Register. This will clear the Alert pin so its ready
-	// for the next event in 250ms
-	write_reg(BQ_SYS_STAT,0xFF);
-
-//	LED_GREEN_DEBUG_OFF();
-    
 }
 
 static THD_FUNCTION(sample_thread, arg) {
@@ -314,13 +315,13 @@ static THD_FUNCTION(sample_thread, arg) {
 	while (!chThdShouldTerminateX()) {
 		m_i2c.has_error = 0;
 
-		chThdSleepMilliseconds(20);
+//		chThdSleepMilliseconds(20);
 
 		palWaitPadTimeout(GPIOA, 2U, TIME_INFINITE);
 
 		bq76940_Alert_handler();
         
-        //timeout_feed_WDT(THREAD_AFE);
+        timeout_feed_WDT(THREAD_AFE);
     }
 }
 
@@ -603,7 +604,7 @@ void sleep_bq76940()
 	//write_reg(BQ_SYS_CTRL2, CC_DIS);
 }
 
-void bq_shutdown_bq76940(void)
+void bq_shutdown_bq76940()
 {
     //Shutdown everything frontend
     write_reg(BQ_SYS_CTRL1, 0x00);

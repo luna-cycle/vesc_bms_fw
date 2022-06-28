@@ -125,14 +125,14 @@ static THD_FUNCTION(sleep_thread, arg) {
 
 		} else {
             LED_GREEN_DEBUG_OFF();
-			LED_OFF(LINE_LED_GREEN);
+			//LED_OFF(LINE_LED_GREEN);
 			go_to_sleep();
 		}
 
 		if (!usb_conf_reset && usb_cdc_configured_cnt() > 0) {
 			m_sleep_timer = 240000;
 			usb_conf_reset = true;
-            LED_RED_DEBUG_ON();
+            //LED_RED_DEBUG_ON();
 			//LED_ON(LINE_LED_RED);
 		}
 
