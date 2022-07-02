@@ -79,11 +79,6 @@ static bool charge_ok(void) {
 
 	float max = m_is_charging ? backup.config.vc_charge_end : backup.config.vc_charge_start;
 	//commands_printf("v_charge_detect: %f", backup.config.v_charge_detect);
-	//commands_printf("HW_GET_CHARGE: %f", HW_GET_V_CHARGE());
-	//commands_printf("m_voltage_cell_min: %f", m_voltage_cell_min);
-	//commands_printf("charge_min: %f", backup.config.vc_charge_min);
-	//commands_printf("m_voltage_cell_max: %f", m_voltage_cell_max);
-	//commands_printf("max: %f", max);*/
 	return  1;/*HW_GET_V_CHARGE() > backup.config.v_charge_detect; // HW_GET_V_CHARGE is Battery Voltage
 			m_voltage_cell_min > backup.config.vc_charge_min &&
 			m_voltage_cell_max < max &&
@@ -469,7 +464,7 @@ static THD_FUNCTION(if_thd, p) {
                 //LED_RED_DEBUG_ON();
 			} else {
 				//LED_OFF(LINE_LED_RED);
-                LED_GREEN_DEBUG_OFF();
+                //LED_GREEN_DEBUG_OFF();
 			}
 		} else {
 			if (m_is_balancing) {

@@ -28,6 +28,7 @@
 #include "math.h"
 #include "stm32l4xx_hal.h"
 #include "sleep.h"
+#include "ch.h"
 
 #ifdef HW_HAS_BQ76940
 
@@ -91,7 +92,7 @@ static THD_FUNCTION(sample_thread, arg);
 // Private functions
 float bq_read_CC(void);
 int8_t bq_read_gain(float *gain);
-void status_load_removal_discharge(void);
+bool status_load_present(void);
 int8_t bq_read_offsets(float *offset);
 void bq_read_temps(volatile float *temps);
 float bq_read_temp_ic(void);
@@ -107,7 +108,6 @@ void bq_disconnect_battery(bool disconnect);
 
 //Macros
 #define READ_ALERT()						palReadPad(BQ76940_ALERT_GPIO, BQ76940_ALERT_PIN)
-#define LOAD_REMOVAL_DISCHARGE()			palReadPad(BQ76940_LRD_GPIO, BQ76940_LRD_PIN)
 
 uint8_t bq76940_init(void) {
     float gain;
@@ -116,12 +116,10 @@ uint8_t bq76940_init(void) {
 	palSetLineMode(LINE_LED_RED_DEBUG, PAL_MODE_OUTPUT_PUSHPULL);
 	palSetLineMode(LINE_LED_GREEN_DEBUG, PAL_MODE_OUTPUT_PUSHPULL);
 
-//	LED_RED_DEBUG_ON();
-
 	bq76940->shunt_res = HW_SHUNT_RES;
 
 	palSetPadMode(BQ76940_ALERT_GPIO, BQ76940_ALERT_PIN, PAL_MODE_INPUT);
-	palSetPadMode(BQ76940_LRD_GPIO, BQ76940_LRD_PIN, PAL_MODE_INPUT_PULLDOWN);
+	palSetPadMode(BQ76940_LRD_GPIO, BQ76940_LRD_PIN, PAL_MODE_INPUT_PULLDOWN); //PAL_MODE_INPUT_PULLDOWN
 
 	memset(&m_i2c, 0, sizeof(i2c_bb_state));
 	m_i2c.sda_gpio = BQ76940_SDA_GPIO;
@@ -211,7 +209,8 @@ uint8_t bq76940_init(void) {
 
 	palEnablePadEvent(GPIOA, 2U, PAL_EVENT_MODE_RISING_EDGE);
 
-	return error; 
+
+    return error; 
 }
 
 
@@ -229,18 +228,23 @@ void bq76940_Alert_handler(void) {
 	}
 	if ( sys_stat & SYS_STAT_UV ) {
 		bms_if_fault_report(FAULT_CODE_CELL_UNDERVOLTAGE);
+        bq76940->request_connection_pack = false;
 	}
 	if ( sys_stat & SYS_STAT_OV ) {
 		bms_if_fault_report(FAULT_CODE_CELL_OVERVOLTAGE);
+        bq76940->request_connection_pack = false;
 	}
 	if ( sys_stat & SYS_STAT_SCD ) {
 		bms_if_fault_report(FAULT_CODE_DISCHARGE_SHORT_CIRCUIT);
+        bq76940->request_connection_pack = false;
 	}
 	if ( sys_stat & SYS_STAT_OCD ) {
 		bms_if_fault_report(FAULT_CODE_DISCHARGE_OVERCURRENT);
+        bq76940->request_connection_pack = false;
 	}
 	if( bq76940->initialized == false ){
 		bms_if_fault_report(FAULT_CODE_DONT_INIT_AFE);
+        bq76940->request_connection_pack = false;
 	}
 	// Clear Status Register. This will clear the Alert pin so its ready
 	// for the next event in 250ms
@@ -248,34 +252,19 @@ void bq76940_Alert_handler(void) {
 	
 	//Read pack current
 	bq76940->CC = bq_read_CC();
-
-	// Read the state of connection pack
-/*	static uint8_t	buff = 0;
-	if(LOAD_REMOVAL_DISCHARGE() == true){
-		LED_RED_DEBUG_ON();
-	}
-	else{
-		LED_RED_DEBUG_OFF();
-	}
-	
-	if( (((read_reg(BQ_SYS_CTRL2)) & 0x01) == 0x00) || //Problem in Charge
-        (((read_reg(BQ_SYS_CTRL2)) & 0x02) == 0x00) ){ //Problem with UV,SC or OC
-		//bq_connect_pack(false); //Disconnect the the pins charge and discharge.
-		//bq76940->is_connected_pack = false;
-		if( bq76940->is_connected_pack ){
-			bq_connect_pack(bq76940->request_connection_pack);
-		}	
+    
+    //Provisional to test this function!
+    if( status_load_present() ){
+        LED_RED_DEBUG_ON();
     }
     else{
-		bq76940->is_connected_pack = true;
-		//Connect the pack if the High level request the connection
-	}
-	
-	if( bq76940->is_connected_pack ){
-		bq_connect_pack(bq76940->request_connection_pack);
-	}	
-*/
-	// Every 1 second make the long read
+        LED_RED_DEBUG_OFF();
+    }
+    //
+    //Here execute the connection or disconnection of back to back mosfet
+    bq_connect_pack(bq76940->request_connection_pack);
+		
+    // Every 1 second make the long read
 	static uint8_t i = 0;
     
 	if(i++ == 4){
@@ -316,8 +305,7 @@ static THD_FUNCTION(sample_thread, arg) {
 		m_i2c.has_error = 0;
 
 //		chThdSleepMilliseconds(20);
-
-		palWaitPadTimeout(GPIOA, 2U, TIME_INFINITE);
+        palWaitPadTimeout(GPIOA, 2U, TIME_MS2I(500) );//TIME_INFINITE); //MS2ST(here number of ms)
 
 		bq76940_Alert_handler();
         
@@ -578,17 +566,15 @@ void bq_balance_cells(volatile bool *m_discharge_state) {
 	return;
 }
 
-void status_load_removal_discharge()
+bool status_load_present()
 {
-	if(LOAD_REMOVAL_DISCHARGE()){
-		//FAULT!
-		bms_if_fault_report(FAULT_CODE_CELL_UNDERVOLTAGE);
-		//commands_printf("SHORT CIRCUIT! LOAD CONNECT");
-		//time to wait (2min)
-		chThdSleepMilliseconds(6000);
-		//Can turn on the big mosfet?
-		if(!(LOAD_REMOVAL_DISCHARGE())) bq_discharge_enable();
-	}
+    uint8_t load_present = ((read_reg(BQ_SYS_CTRL1)) & 0X80 );
+    if(load_present == 0x80) {
+        return true;   
+    }
+    else{
+        return false;
+    }
 }
 
 static void read_v_batt(float *v_bat){
