@@ -54,7 +54,7 @@ typedef enum {
 	CAN_BAUD_75K
 } CAN_BAUD;
 
-typedef struct {
+typedef struct __attribute__((packed)){
 	// ID if this BMS (e.g. on the CAN-bus)
 	uint8_t controller_id;
 
@@ -152,7 +152,7 @@ typedef struct {
 
 // Backup data that is retained between boots and firmware updates. When adding new
 // entries, put them at the end.
-typedef struct {
+typedef struct __attribute__((packed)){
 	// Ah counter
 	uint32_t ah_cnt_init_flag;
 	double ah_cnt;

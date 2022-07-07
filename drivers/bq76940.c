@@ -29,6 +29,7 @@
 #include "stm32l4xx_hal.h"
 #include "sleep.h"
 #include "conf_general.h"
+#include "chbsem.h"
 #ifdef HW_HAS_BQ76940
 
 #define MAX_CELL_NUM		15
@@ -41,7 +42,7 @@
 static i2c_bb_state  m_i2c;
 static float m_v_cell[MAX_CELL_NUM];
 static volatile bool m_discharge_state[MAX_CELL_NUM] = {false};
-
+binary_semaphore_t bq_alert_semph;
 
 //typedef struct __attribute__((packed)) {
 typedef struct {
@@ -210,8 +211,12 @@ uint8_t bq76940_init(void) {
 	write_reg(BQ_SYS_STAT,0xFF);
 
 	chThdCreateStatic(sample_thread_wa, sizeof(sample_thread_wa), HIGHPRIO, sample_thread, NULL);
-
+	// set alert pin as EXTI risign edge
 	palEnablePadEvent(GPIOA, 2U, PAL_EVENT_MODE_RISING_EDGE);
+	// set bq_Alert_calback as callback function for rising edge of alert pin
+	palSetPadCallback(GPIOA, 2U, (void *)bq_Alert_callback, NULL);
+	//init semaphore as taken
+	chBSemObjectInit(&bq_alert_semph, true);
 
 	return error;
 }
@@ -229,7 +234,7 @@ void bq76940_Alert_handler(void) {
     
 	// Read the state of connection pack
 	static uint8_t	buff;
-	
+
 	if( (((buff = read_reg(BQ_SYS_CTRL2)) & 0x03) == 0x02) || //Problem in Charge
         (((buff = read_reg(BQ_SYS_CTRL2)) & 0x03) == 0x01) ){ //Problem with UV,SC or OC
 		bq_connect_pack(false); //Disconnect the the pins charge and discharge.
@@ -238,7 +243,7 @@ void bq76940_Alert_handler(void) {
     else{
 		bq76940->is_connected_pack = true;
 	}
-	
+
 	//Connect the pack if the High level request the connection
 	if( bq76940->is_connected_pack ){
 		bq_connect_pack(bq76940->request_connection_pack);
@@ -247,14 +252,14 @@ void bq76940_Alert_handler(void) {
 	
 	// Every 1 second make the long read
 	static uint8_t i = 0;
-    
+
 	if(i++ == 4){
 		read_cell_voltages(m_v_cell); 	//read cell voltages
 		read_v_batt(&bq76940->pack_mv);
 		bq_balance_cells(m_discharge_state);	//configure balancing bits over i2c
 		i = 0;
 	}
-	
+
 	//read external temp for 2.5 sec, then internal temp for 2.5sec and repeat
 	static uint8_t temp_sensing_state = 1;
 	if(temp_sensing_state == 0) {
@@ -263,7 +268,7 @@ void bq76940_Alert_handler(void) {
 			//configure AFE so after 2 seconds the external temperature will become available
 			write_reg(BQ_SYS_CTRL1, (ADC_EN | TEMP_SEL));
 	}
-	
+
 	if(temp_sensing_state == 10) {
 		  	//read external temperatures
 			bq_read_temps(bq76940->temp);
@@ -275,7 +280,7 @@ void bq76940_Alert_handler(void) {
 	if(temp_sensing_state == 20) {
 		temp_sensing_state = 0;
 	}
-	
+
 	// Report fault codes
 	if ( sys_stat & SYS_STAT_DEVICE_XREADY ) {
 		//handle error
@@ -314,11 +319,8 @@ static THD_FUNCTION(sample_thread, arg) {
 		m_i2c.has_error = 0;
 
 		chThdSleepMilliseconds(20);
-
-		palWaitPadTimeout(GPIOA, 2U, TIME_INFINITE);
-
+		chBSemWaitTimeout(&bq_alert_semph, TIME_INFINITE);
 		bq76940_Alert_handler();
-        
         //timeout_feed_WDT(THREAD_AFE);
     }
 }
@@ -615,3 +617,8 @@ float bq_get_CC_raw(void)
 	return bq_get_current() * bq76940->shunt_res / CC_REG_TO_AMPS_FACTOR;
 }
 #endif
+
+void bq_Alert_callback (void)
+{
+	chBSemSignal(&bq_alert_semph);
+}

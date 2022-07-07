@@ -185,5 +185,5 @@ void bq_discharge_enable(void);
 void bq_discharge_disable(void);
 void bq_charge_enable(void);
 void bq_charge_disable(void);
-
+void bq_Alert_callback (void);
 #endif /* BQ76940_H_ */

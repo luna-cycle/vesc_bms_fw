@@ -29,12 +29,11 @@
 #define HW_BACK_TO_BACK_MOSFETS
 #define HW_HAL_USE_I2C2
 #define HW_USE_HSI16
-#define HW_PAL_USE_WHAIT
 #define WH_CAN_USE_SLEEP_MODE
 // Macros
 #define HW_INIT_HOOK()
 
-#define HW_AFE_INIT()				bq76940_init()
+#define HW_AFE_INIT()				hw_luna_init();
 #define PACK_CONNECT()				bq_request_connect_pack(true)
 #define PACK_DISCONNECT()			bq_request_connect_pack(false)
 #define CHARGE_ENABLE()				bq_request_connect_pack(true)
@@ -102,8 +101,8 @@
 // LEDs
 //#define LINE_LED_RED			PAL_LINE(GPIOA, 0)
 //#define LINE_LED_GREEN			PAL_LINE(GPIOA, 1)
-#define LINE_LED_RED			PAL_LINE(GPIOA, 8)
-#define LINE_LED_GREEN			PAL_LINE(GPIOA, 9)
+#define LINE_LED_RED			PAL_LINE(GPIOA, 0)
+#define LINE_LED_GREEN			PAL_LINE(GPIOA, 1)
 //#define LINE_LED_RED			
 //#define LINE_LED_GREEN			
 
