@@ -155,7 +155,7 @@ uint8_t bq76940_init(void) {
 	// rećonfigured on the next MCU reset.
 	
 	
-	if((read_reg(BQ_SYS_CTRL1) & 0x08) == 0x00) {	//ADC_EN '1' in normal mode
+	if((read_reg(BQ_SYS_CTRL1) & 0x10) == 0x00) {	//ADC_EN '1' in normal mode
 		if(read_reg(BQ_SYS_CTRL2) == 0x00) {
 
 			// enable ADC and thermistors
@@ -270,9 +270,13 @@ void bq76940_Alert_handler(void) {
 	if(i++ == 4){
 		read_cell_voltages(m_v_cell); 	//read cell voltages
 		read_v_batt(&bq76940->pack_mv);
+		if(bq76940->pack_mv < 37.8){
+			bq_shutdown_bq76940();
+		}
 		bq_balance_cells(m_discharge_state);	//configure balancing bits over i2c
 		i = 0;
 	}
+	
 	
 	//read external temp for 2.5 sec, then internal temp for 2.5sec and repeat
 	static uint8_t temp_sensing_state = 1;
@@ -309,7 +313,7 @@ static THD_FUNCTION(sample_thread, arg) {
 
 		bq76940_Alert_handler();
         
-        timeout_feed_WDT(THREAD_AFE);
+       // timeout_feed_WDT(THREAD_AFE);
     }
 }
 

@@ -30,8 +30,8 @@
 typedef enum {
 	THREAD_BAL = 0,
 	THREAD_CANBUS,
-	THREAD_SLEEP,
-    THREAD_AFE
+	THREAD_SLEEP//,
+    //THREAD_AFE
 } WWDT_THREAD_TYPES;
 
 // Functions

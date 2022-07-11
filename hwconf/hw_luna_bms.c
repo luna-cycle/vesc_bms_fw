@@ -84,8 +84,9 @@ static void terminal_cmd_connect(int argc, const char **argv) {
 	(void)argc;
 	(void)argv;
 
-    bq_discharge_enable();
-    bq_charge_enable();
+    PACK_CONNECT();
+//    bq_discharge_enable();
+//    bq_charge_enable();
     
 	return;
 }

@@ -145,9 +145,9 @@ static THD_FUNCTION(timeout_thread, arg) {
 			threads_ok = false;
 		}
 		
-		if (feed_counter[THREAD_AFE] < MIN_THREAD_ITERATIONS) {
+/*		if (feed_counter[THREAD_AFE] < MIN_THREAD_ITERATIONS) {
 			threads_ok = false;
-		}
+		} */
 		
 		memset((void*)feed_counter, 0, sizeof(feed_counter));
 
