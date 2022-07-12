@@ -30,6 +30,7 @@
 #include "sleep.h"
 #include "conf_general.h"
 #include "chbsem.h"
+#include "ch.h"
 #ifdef HW_HAS_BQ76940
 
 #define MAX_CELL_NUM		15
@@ -42,7 +43,6 @@
 static i2c_bb_state  m_i2c;
 static float m_v_cell[MAX_CELL_NUM];
 static volatile bool m_discharge_state[MAX_CELL_NUM] = {false};
-binary_semaphore_t bq_alert_semph;
 
 //typedef struct __attribute__((packed)) {
 typedef struct {
@@ -96,7 +96,7 @@ static THD_FUNCTION(sample_thread, arg);
 // Private functions
 float bq_read_CC(void);
 int8_t bq_read_gain(float *gain);
-void status_load_removal_discharge(void);
+bool status_load_present(void);
 int8_t bq_read_offsets(float *offset);
 void bq_read_temps(volatile float *temps);
 float bq_read_temp_ic(void);
@@ -112,7 +112,6 @@ void bq_disconnect_battery(bool disconnect);
 
 //Macros
 #define READ_ALERT()						palReadPad(BQ76940_ALERT_GPIO, BQ76940_ALERT_PIN)
-#define LOAD_REMOVAL_DISCHARGE()			palReadPad(BQ76940_LRD_GPIO, BQ76940_LRD_PIN)
 
 uint8_t bq76940_init(void) {
     float gain;
@@ -172,7 +171,7 @@ uint8_t bq76940_init(void) {
 		
 			//OverVoltage threshold
 			error |= write_reg(BQ_OV_TRIP, tripVoltage(4.25));
-			error |= write_reg(BQ_PROTECT3, BQ_OV_DELAY_4s);
+			error |= write_reg(BQ_PROTECT3, BQ_OV_DELAY_8s);
 			//UnderVoltage threshold
 			error |= write_reg(BQ_UV_TRIP, tripVoltage(2.80));
 			error |= write_reg(BQ_PROTECT3, BQ_UV_DELAY_4s);
@@ -206,17 +205,7 @@ uint8_t bq76940_init(void) {
 		}
 	}
 
-	// Clear Status Register. This will clear the Alert pin so its ready
-	// for the next event in 250ms
-	write_reg(BQ_SYS_STAT,0xFF);
-
-	chThdCreateStatic(sample_thread_wa, sizeof(sample_thread_wa), HIGHPRIO, sample_thread, NULL);
-	// set alert pin as EXTI risign edge
-	palEnablePadEvent(GPIOA, 2U, PAL_EVENT_MODE_RISING_EDGE);
-	// set bq_Alert_calback as callback function for rising edge of alert pin
-	palSetPadCallback(GPIOA, 2U, (void *)bq_Alert_callback, NULL);
-	//init semaphore as taken
-	chBSemObjectInit(&bq_alert_semph, true);
+	chThdCreateStatic(sample_thread_wa, sizeof(sample_thread_wa), NORMALPRIO, sample_thread, NULL);
 
 	return error;
 }
@@ -228,27 +217,42 @@ void bq76940_Alert_handler(void) {
     
 	// Read Status Register
 	uint8_t sys_stat = read_reg(BQ_SYS_STAT);
-    
+	// Report fault codes
+	if ( sys_stat & SYS_STAT_DEVICE_XREADY ) {
+		//handle error
+	}
+	if ( sys_stat & SYS_STAT_OVRD_ALERT ) {
+		//handle error
+	}
+	if ( sys_stat & SYS_STAT_UV ) {
+		bms_if_fault_report(FAULT_CODE_CELL_UNDERVOLTAGE);
+		bq76940->request_connection_pack = false;
+	}
+	if ( sys_stat & SYS_STAT_OV ) {
+		bms_if_fault_report(FAULT_CODE_CELL_OVERVOLTAGE);
+		bq76940->request_connection_pack = false;
+	}
+	if ( sys_stat & SYS_STAT_SCD ) {
+		bms_if_fault_report(FAULT_CODE_DISCHARGE_SHORT_CIRCUIT);
+		bq76940->request_connection_pack = false;
+	}
+	if ( sys_stat & SYS_STAT_OCD ) {
+		bms_if_fault_report(FAULT_CODE_DISCHARGE_OVERCURRENT);
+		bq76940->request_connection_pack = false;
+	}
+	if( bq76940->initialized == false ){
+		bms_if_fault_report(FAULT_CODE_DONT_INIT_AFE);
+		bq76940->request_connection_pack = false;
+	}
+	// Clear Status Register. This will clear the Alert pin so its ready
+	// for the next event in 250ms
+	write_reg(BQ_SYS_STAT,0xFF);
+
 	//Read pack current
 	bq76940->CC = bq_read_CC();
-    
-	// Read the state of connection pack
-	static uint8_t	buff;
 
-	if( (((buff = read_reg(BQ_SYS_CTRL2)) & 0x03) == 0x02) || //Problem in Charge
-        (((buff = read_reg(BQ_SYS_CTRL2)) & 0x03) == 0x01) ){ //Problem with UV,SC or OC
-		bq_connect_pack(false); //Disconnect the the pins charge and discharge.
-		bq76940->is_connected_pack = false;
-    }
-    else{
-		bq76940->is_connected_pack = true;
-	}
-
-	//Connect the pack if the High level request the connection
-	if( bq76940->is_connected_pack ){
-		bq_connect_pack(bq76940->request_connection_pack);
-    }
-	//commands_printf("is connected pack = %d", (read_reg(BQ_SYS_STAT) & 0x0F) );
+    //Here execute the connection or disconnection of back to back mosfet
+    bq_connect_pack(bq76940->request_connection_pack);
 	
 	// Every 1 second make the long read
 	static uint8_t i = 0;
@@ -281,47 +285,47 @@ void bq76940_Alert_handler(void) {
 		temp_sensing_state = 0;
 	}
 
-	// Report fault codes
-	if ( sys_stat & SYS_STAT_DEVICE_XREADY ) {
-		//handle error
-	}
-	if ( sys_stat & SYS_STAT_OVRD_ALERT ) {
-		//handle error
-	}
-	if ( sys_stat & SYS_STAT_UV ) {
-		bms_if_fault_report(FAULT_CODE_CELL_UNDERVOLTAGE);
-	}
-	if ( sys_stat & SYS_STAT_OV ) {
-		bms_if_fault_report(FAULT_CODE_CELL_OVERVOLTAGE);
-	}
-	if ( sys_stat & SYS_STAT_SCD ) {
-		bms_if_fault_report(FAULT_CODE_DISCHARGE_SHORT_CIRCUIT);
-	}
-	if ( sys_stat & SYS_STAT_OCD ) {
-		bms_if_fault_report(FAULT_CODE_DISCHARGE_OVERCURRENT);
-	}
-	if( bq76940->initialized == false ){
-		bms_if_fault_report(FAULT_CODE_DONT_INIT_AFE);
-	}
-	// Clear Status Register. This will clear the Alert pin so its ready
-	// for the next event in 250ms
-	write_reg(BQ_SYS_STAT,0xFF);
+
 
 //	LED_GREEN_DEBUG_OFF();
     
 }
-
+uint8_t afe_pool_count = 0;
+bool AFE_FAULT_FLAG = FALSE;
 static THD_FUNCTION(sample_thread, arg) {
 	(void)arg;
 	chRegSetThreadName("BQ76940");
 
 	while (!chThdShouldTerminateX()) {
 		m_i2c.has_error = 0;
+		AFE_FAULT_FLAG = FALSE;
+		while(!palReadPad(GPIOA,2U)){
 
-		chThdSleepMilliseconds(20);
-		chBSemWaitTimeout(&bq_alert_semph, TIME_INFINITE);
-		bq76940_Alert_handler();
-        //timeout_feed_WDT(THREAD_AFE);
+			if(afe_pool_count > 10){
+				write_reg(BQ_SYS_STAT,0xFF);// for future hard rev a hardware reset can be implemented
+				timeout_feed_WDT(THREAD_AFE);
+				bms_if_fault_report(FAULT_CODE_NON_RESPONSE_AFE);
+				AFE_FAULT_FLAG = TRUE;
+				break;
+			}
+			chThdSleepMilliseconds(30);
+			//timeout_feed_WDT(THREAD_AFE);
+			afe_pool_count++;
+		}
+
+		if(!AFE_FAULT_FLAG){
+			bq76940_Alert_handler();
+			chThdSleepMilliseconds(10);
+			//check AFE response
+			if(palReadPad(GPIOA,2U)){
+				timeout_feed_WDT(THREAD_AFE);
+				bms_if_fault_report(FAULT_CODE_NON_RESPONSE_AFE);
+				write_reg(BQ_SYS_STAT,0xFF);//for future hard rev a hardware reset can be implemented
+			}
+		}
+
+		//timeout_feed_WDT(THREAD_AFE);
+
     }
 }
 
@@ -578,17 +582,15 @@ void bq_balance_cells(volatile bool *m_discharge_state) {
 	return;
 }
 
-void status_load_removal_discharge()
+bool status_load_present()
 {
-	if(LOAD_REMOVAL_DISCHARGE()){
-		//FAULT!
-		bms_if_fault_report(FAULT_CODE_CELL_UNDERVOLTAGE);
-		//commands_printf("SHORT CIRCUIT! LOAD CONNECT");
-		//time to wait (2min)
-		chThdSleepMilliseconds(6000);
-		//Can turn on the big mosfet?
-		if(!(LOAD_REMOVAL_DISCHARGE())) bq_discharge_enable();
-		}
+    uint8_t load_present = ((read_reg(BQ_SYS_CTRL1)) & 0X80 );
+    if(load_present == 0x80) {
+        return true;
+    }
+    else{
+        return false;
+    }
 }
 
 static void read_v_batt(volatile float *v_bat){
@@ -616,9 +618,6 @@ float bq_get_CC_raw(void)
 {
 	return bq_get_current() * bq76940->shunt_res / CC_REG_TO_AMPS_FACTOR;
 }
-#endif
 
-void bq_Alert_callback (void)
-{
-	chBSemSignal(&bq_alert_semph);
-}
+
+#endif

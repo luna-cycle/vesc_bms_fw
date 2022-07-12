@@ -144,7 +144,11 @@ static THD_FUNCTION(timeout_thread, arg) {
 		if (feed_counter[THREAD_SLEEP] < MIN_THREAD_ITERATIONS) {
 			threads_ok = false;
 		}
-
+#ifdef USE_AFE_WD
+		if (feed_counter[THREAD_AFE] < MIN_THREAD_ITERATIONS) {
+			threads_ok = false;
+		}
+#endif
 		memset((void*)feed_counter, 0, sizeof(feed_counter));
 
 		if (threads_ok == true) {

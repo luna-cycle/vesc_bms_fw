@@ -30,6 +30,7 @@
 #define HW_HAL_USE_I2C2
 #define HW_USE_HSI16
 #define WH_CAN_USE_SLEEP_MODE
+#define USE_AFE_WD
 // Macros
 #define HW_INIT_HOOK()
 
