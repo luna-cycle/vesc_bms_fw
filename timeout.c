@@ -19,7 +19,7 @@
 
 #include "timeout.h"
 #include <string.h>
-
+#include HW_HEADER
 // Macros
 #define IWDG_START()				IWDG->KR = 0xCCCC
 #define IWDG_RELOAD()				IWDG->KR = 0xAAAA

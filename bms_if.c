@@ -222,7 +222,7 @@ static THD_FUNCTION(charge_discharge_thd,p){
 		// check temp faults
 		if (HW_TEMP_CELLS_MAX() >= backup.config.t_charge_max && backup.config.t_charge_mon_en) {
 			bms_if_fault_report(FAULT_CODE_CELL_OVERTEMP);
-		//	flag_temp_ot_cell_fail = 1;
+			flag_temp_ot_cell_fail = 1;
 			allow_ot_cell_fail_clear = 0;
 		}else if(allow_ot_cell_fail_clear){
 			flag_temp_ot_cell_fail = 0;
@@ -230,7 +230,7 @@ static THD_FUNCTION(charge_discharge_thd,p){
 
 		if (HW_TEMP_CELLS_MIN() <= backup.config.t_charge_min && backup.config.t_charge_mon_en) {
 			bms_if_fault_report(FAULT_CODE_CELL_UNDERTEMP);
-			//flag_temp_ut_cell_fail = 1;
+			flag_temp_ut_cell_fail = 1;
 			allow_ut_cell_fail_clear = 0;
 		}else if(allow_ut_cell_fail_clear){
 			flag_temp_ut_cell_fail = 0;
@@ -256,9 +256,7 @@ static THD_FUNCTION(charge_discharge_thd,p){
 		}
 
 
-////////////////////////////////////////////////////////////TODO: detect under voltage or over voltage on wake up
-	// check cell under voltage
-
+		//check cell under voltage
 		if(HW_UV_DETECTED()){
 			bms_if_fault_report(FAULT_CODE_CELL_UNDERVOLTAGE);
 			flag_UV_fail = 1;
@@ -339,10 +337,10 @@ static THD_FUNCTION(charge_discharge_thd,p){
 								 //with no fails and no current bms is IDLE
 		}
 
-	//	commands_printf("%d %d %d %d %d %d %d %d %d %d %d",flag_temp_ot_cell_fail, flag_temp_ut_cell_fail,flag_temp_hardware_fail,flag_temp_Vreg_fail,
+		//commands_printf("%d %d %d %d %d %d %d %d %d %d %d",flag_temp_ot_cell_fail, flag_temp_ut_cell_fail,flag_temp_hardware_fail,flag_temp_Vreg_fail,
 		//	flag_UV_fail, flag_OV_fail, flag_SC_fail, flag_OC_fail, flag_I_charge_fail,
 			//	flag_sc_discharge_fail,flag_oc_discharge_fail);
-		//commands_printf("%d",BMS_state);
+	//	commands_printf("%d",BMS_state);
 
 		switch(BMS_state){
 
@@ -350,7 +348,7 @@ static THD_FUNCTION(charge_discharge_thd,p){
 				m_is_charging = true;
 				HW_PACK_CONN_ONLY_CHARGE(false);
 				HW_PACK_CONNECT();
-
+//TODO: download the backup array to flash if carger is connected
 				break;
 
 			case BMS_DISCHARGIN:// de activate charge port
@@ -508,7 +506,7 @@ static THD_FUNCTION(charge_discharge_thd,p){
 				break;
 
 			default:
-				//BMS_state = BMS_FAIL; // if unknow state, declare fail
+				BMS_state = BMS_FAIL; // if unknow state, declare fail
 				sleep_reset();// prevent sleeping
 				break;
 

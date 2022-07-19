@@ -71,6 +71,7 @@ typedef struct {
 	bool UV_detected;
 	bool OV_detected;
 	bool connect_only_charger;
+	uint8_t re_init_retry;
 } bq76940_t;
 
 // The config is stored in the backup struct so that it is stored while sleeping.
@@ -224,16 +225,16 @@ void bq76940_Alert_handler(void) {
 	// Report fault codes
 	if ( sys_stat & SYS_STAT_DEVICE_XREADY ) {
 		//handle error
-		//commands_printf("hard_error");
+
 	}
 	if ( sys_stat & SYS_STAT_OVRD_ALERT ) {
 		//handle error
-		//commands_printf("override alert");
+
 	}
 
 	if ( sys_stat & SYS_STAT_UV ) {
 		bms_if_fault_report(FAULT_CODE_CELL_UNDERVOLTAGE);
-	//	bq76940->request_connection_pack = false;
+		//bq76940->request_connection_pack = false;
 		bq76940->UV_detected = true;
 
 	}
@@ -327,7 +328,14 @@ static THD_FUNCTION(sample_thread, arg) {
 			if(afe_pool_count > 10){// if code reach here, the AFE is not active
 				write_reg(BQ_SYS_STAT,0xFF);
 				bms_if_fault_report(FAULT_CODE_NON_RESPONSE_AFE);
-				AFE_FAULT_FLAG = TRUE;
+
+				// reinit bq76940
+				bq76940->initialized = false;// the afe will re init in the next wake up
+				if(bq76940->re_init_retry > 3){
+					bq76940->re_init_retry = 0;
+					bq_shutdown_bq76940();
+				}
+
 				while(1){chThdSleepMilliseconds(1000);}// loop here and wait for WD for restart
 			}
 			timeout_feed_WDT(THREAD_AFE);
@@ -335,17 +343,14 @@ static THD_FUNCTION(sample_thread, arg) {
 			afe_pool_count++;
 		}
 
-		if(!AFE_FAULT_FLAG){
-			bq76940_Alert_handler();
-			chThdSleepMilliseconds(1);
-			//check AFE response
-			if(palReadPad(GPIOA,2U)){
-				timeout_feed_WDT(THREAD_AFE);
-				bms_if_fault_report(FAULT_CODE_NON_RESPONSE_AFE);
-				write_reg(BQ_SYS_STAT,0xFF);//for future hard rev a hardware reset can be implemented
-			}
-		//bq76940_Alert_handler();
 
+		bq76940_Alert_handler();
+		chThdSleepMilliseconds(1);
+		//check AFE response
+		if(palReadPad(GPIOA,2U)){
+			timeout_feed_WDT(THREAD_AFE);
+			bms_if_fault_report(FAULT_CODE_NON_RESPONSE_AFE);
+			write_reg(BQ_SYS_STAT,0xFF);//for future hard rev a hardware reset can be implemented
 		}
 
 	}
