@@ -186,4 +186,11 @@ void bq_discharge_disable(void);
 void bq_charge_enable(void);
 void bq_charge_disable(void);
 void bq_Alert_callback (void);
+bool bq_get_load_status(void);
+void bq_restore_oc_sc_fail(void);
+bool bq_uv_detected(void);
+bool bq_ov_detected(void);
+void bq_restore_ov_fail(void);
+void bq_restore_uv_fail(void);
+void bq_connect_only_charger (bool);
 #endif /* BQ76940_H_ */

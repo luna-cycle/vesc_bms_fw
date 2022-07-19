@@ -44,6 +44,18 @@ float hw_luna_get_cell_temp_max(void) {
     return temp_max;
 }
 
+float hw_luna_get_cell_temp_min(void) {
+    float temp_min = 200.0;
+
+    for(int i = 0; i<4 ;i++) {
+        float temp = hw_luna_get_temp(i);
+        if(temp < temp_min) {
+            temp_min = temp;
+        }
+    }
+    return temp_min;
+}
+
 float hw_luna_get_temp(int sensors){
 // hardware has 8 temperature sensors (plus internal AFE sensor):
 // T[0]: cell temperature TC1
@@ -101,5 +113,15 @@ static void terminal_cmd_connect(int argc, const char **argv) {
 	return;
 }
 
+float hw_luna_get_connector_temp(){// return the higest temperature between connector temp
 
+	float temp_aux = 0;
+
+	temp_aux = hw_luna_get_temp(4);
+	if(hw_luna_get_temp(5) > temp_aux){
+		temp_aux = hw_luna_get_temp(5);
+	}
+
+	return temp_aux;
+}
 

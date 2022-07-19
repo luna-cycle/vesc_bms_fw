@@ -31,12 +31,23 @@
 #define HW_USE_HSI16
 #define WH_CAN_USE_SLEEP_MODE
 #define USE_AFE_WD
+#define HW_BIDIRECTIONAL_SWITCH
+
+#define HW_MAX_TEMP_IC 			65 // AFE temp
+#define HW_MAX_MOSFET_TEMP		65 // MOSFET TEMP
+#define HW_MAX_CONNECTOR_TEMP	65 // power connectors and regulator max temp
+#define HW_MAX_VREG_TEMP 		65 // max pre regulator temp
+#define HW_MAX_SC_DISCHARGE_I	44 // short circuit current
+#define HW_MAX_OC_DISCHARGE_I	16 // overcurrent current
+#define HW_HYSTERESIS_TEMP		5  // hysteresis to avoid reconnecto on temp fail
+#define MAX_RECONNECT_ATTEMPT 	3	// max reconnection attempt after a short circuit or overcurrent
+#define RECONNECTION_TIMEOUT	3	// seconds to wait before reconnection attempt
 // Macros
 #define HW_INIT_HOOK()
 
 #define HW_AFE_INIT()				hw_luna_init();
-#define PACK_CONNECT()				bq_request_connect_pack(true)
-#define PACK_DISCONNECT()			bq_request_connect_pack(false)
+#define HW_PACK_CONNECT()			bq_request_connect_pack(true)
+#define HW_PACK_DISCONNECT()		bq_request_connect_pack(false)
 #define CHARGE_ENABLE()				bq_request_connect_pack(true)
 #define CHARGE_DISABLE()			bq_request_connect_pack(false)
 #define HW_GET_TEMP(sensors)		hw_luna_get_temp(sensors)
@@ -51,6 +62,19 @@
 #define HW_ZERO_CURRENT_OFFSET  	bq_get_CC_raw()
 #define HW_AFE_SLEEP()				sleep_bq76940()
 #define HW_GET_BAL_TEMP()			hw_luna_get_bal_temp()
+#define HW_MOSFET_SENSOR()			hw_luna_get_temp(6) // return mosfet temp
+#define HW_CONNECTOR_TEMP()			hw_luna_get_connector_temp()
+#define HW_VREGULATOR_TEMP()		hw_luna_get_temp(7)
+#define HW_LOAD_DETECTION()			bq_get_load_status()
+#define HW_CHARGER_DETECTION()		1
+#define HW_PACK_CONN_ONLY_CHARGE(request)	bq_connect_only_charger(request)
+#define HW_SC_OC_DETECTED()			bq_oc_sc_detected()
+#define HW_SC_OC_RESTORE()			bq_restore_oc_sc_fail()
+#define HW_OV_DETECTED()			bq_ov_detected()
+#define HW_UV_DETECTED()			bq_uv_detected()
+#define HW_OV_RESTORE_FAIL()		bq_restore_ov_fail()
+#define HW_UV_RESTORE_FAIL() 		bq_restore_uv_fail()
+
 //#define HW_SHUTDOWN_AFE()           bq_shutdown_bq76940()
 
 // Settings
@@ -179,8 +203,9 @@
 //#define NTC_RES(adc)			(10000.0 / ((4095.0 / (float)adc) - 1.0))
 #define NTC_TEMP(adc)			(1.0 / ((logf(NTC_RES(adc) / 10000.0) / 3380.0) + (1.0 / 298.15)) - 273.15)
 
-// TODO: Take highest of all temp sensors
+// Highest and lower cell temp
 #define HW_TEMP_CELLS_MAX()		hw_luna_get_cell_temp_max()
+#define HW_TEMP_CELLS_MIN()		hw_luna_get_cell_temp_min()
 
 // ADC Channels
 #define ADC_CH_V_CHARGE			ADC_CHANNEL_IN3
@@ -196,5 +221,8 @@
 void hw_luna_init(void);
 float hw_luna_get_temp(int sensors);
 float hw_luna_get_cell_temp_max(void);
+float hw_luna_get_cell_temp_min(void);
 float hw_luna_get_bal_temp (void);
+float hw_luna_get_connector_temp(void);
+
 #endif /* HWCONF_HW_LUNA_BMS_H_ */

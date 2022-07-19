@@ -20,6 +20,11 @@
 #ifndef BMS_IF_H_
 #define BMS_IF_H_
 
+#define BMS_CHARGING 	1
+#define BMS_DISCHARGIN  2
+#define BMS_FAIL 		3
+#define BMS_IDLE		0
+
 #include "conf_general.h"
 
 typedef void (*bms_if_fault_cb) (fault_data *p_data);
@@ -62,5 +67,8 @@ void bms_if_sleep(void);
 void bms_if_fault_report(bms_fault_code fault);
 bms_fault_code bms_if_fault_now(void);
 void bms_if_register_fault_cb(const bms_if_fault_cb cb);
-
+float bms_if_get_temp_mosfet (void);
+float bms_if_get_connector_temp(void);
+float bms_if_get_vreg_temp (void);
+bool bq_oc_sc_detected (void);
 #endif /* BMS_IF_H_ */

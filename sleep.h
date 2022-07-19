@@ -28,5 +28,5 @@
 void sleep_init(void);
 void sleep_reset(void);
 int sleep_time_left(void);
-
+void force_sleep(void);
 #endif /* SLEEP_H_ */

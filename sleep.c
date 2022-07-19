@@ -98,7 +98,6 @@ static THD_FUNCTION(sleep_thread, arg) {
 	for(;;) {
 		if (m_sleep_timer > 0) {
 			m_sleep_timer--;
-
 			static int blink = 0;
 			blink++;
 			if (blink > 500) {
@@ -128,4 +127,10 @@ static THD_FUNCTION(sleep_thread, arg) {
 
 		chThdSleepMilliseconds(1);
 	}
+}
+
+void force_sleep(void){ // force to sleep due to hardware high temp
+
+	m_sleep_timer = 0;
+
 }

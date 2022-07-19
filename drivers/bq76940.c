@@ -66,6 +66,11 @@ typedef struct {
 	bool is_connected_pack;
 	bool request_connection_pack;
 	fault_data	fault;
+	bool is_load_present;
+	bool oc_sc_detected;
+	bool UV_detected;
+	bool OV_detected;
+	bool connect_only_charger;
 } bq76940_t;
 
 // The config is stored in the backup struct so that it is stored while sleeping.
@@ -96,7 +101,6 @@ static THD_FUNCTION(sample_thread, arg);
 // Private functions
 float bq_read_CC(void);
 int8_t bq_read_gain(float *gain);
-bool status_load_present(void);
 int8_t bq_read_offsets(float *offset);
 void bq_read_temps(volatile float *temps);
 float bq_read_temp_ic(void);
@@ -109,7 +113,7 @@ uint8_t CRC8(unsigned char *ptr, unsigned char len,unsigned char key);
 void bq_balance_cells(volatile bool *m_discharge_state);
 uint8_t tripVoltage(float voltage);
 void bq_disconnect_battery(bool disconnect);
-
+bool status_load_present(void);
 //Macros
 #define READ_ALERT()						palReadPad(BQ76940_ALERT_GPIO, BQ76940_ALERT_PIN)
 
@@ -171,7 +175,7 @@ uint8_t bq76940_init(void) {
 		
 			//OverVoltage threshold
 			error |= write_reg(BQ_OV_TRIP, tripVoltage(4.25));
-			error |= write_reg(BQ_PROTECT3, BQ_OV_DELAY_8s);
+			error |= write_reg(BQ_PROTECT3, BQ_OV_DELAY_4s);
 			//UnderVoltage threshold
 			error |= write_reg(BQ_UV_TRIP, tripVoltage(2.80));
 			error |= write_reg(BQ_PROTECT3, BQ_UV_DELAY_4s);
@@ -205,7 +209,7 @@ uint8_t bq76940_init(void) {
 		}
 	}
 
-	chThdCreateStatic(sample_thread_wa, sizeof(sample_thread_wa), NORMALPRIO, sample_thread, NULL);
+	chThdCreateStatic(sample_thread_wa, sizeof(sample_thread_wa), NORMALPRIO +2 , sample_thread, NULL);
 
 	return error;
 }
@@ -220,29 +224,42 @@ void bq76940_Alert_handler(void) {
 	// Report fault codes
 	if ( sys_stat & SYS_STAT_DEVICE_XREADY ) {
 		//handle error
+		//commands_printf("hard_error");
 	}
 	if ( sys_stat & SYS_STAT_OVRD_ALERT ) {
 		//handle error
+		//commands_printf("override alert");
 	}
+
 	if ( sys_stat & SYS_STAT_UV ) {
 		bms_if_fault_report(FAULT_CODE_CELL_UNDERVOLTAGE);
-		bq76940->request_connection_pack = false;
+	//	bq76940->request_connection_pack = false;
+		bq76940->UV_detected = true;
+
 	}
+
 	if ( sys_stat & SYS_STAT_OV ) {
 		bms_if_fault_report(FAULT_CODE_CELL_OVERVOLTAGE);
-		bq76940->request_connection_pack = false;
+		//bq76940->request_connection_pack = false;
+		bq76940->OV_detected = true;
+
 	}
+
 	if ( sys_stat & SYS_STAT_SCD ) {
 		bms_if_fault_report(FAULT_CODE_DISCHARGE_SHORT_CIRCUIT);
-		bq76940->request_connection_pack = false;
+		//bq76940->request_connection_pack = false;
+		bq76940->oc_sc_detected =  true;
 	}
+
 	if ( sys_stat & SYS_STAT_OCD ) {
 		bms_if_fault_report(FAULT_CODE_DISCHARGE_OVERCURRENT);
-		bq76940->request_connection_pack = false;
+		//bq76940->request_connection_pack = false;
+		bq76940->oc_sc_detected =  true;
 	}
+
 	if( bq76940->initialized == false ){
 		bms_if_fault_report(FAULT_CODE_DONT_INIT_AFE);
-		bq76940->request_connection_pack = false;
+		//bq76940->request_connection_pack = false;
 	}
 	// Clear Status Register. This will clear the Alert pin so its ready
 	// for the next event in 250ms
@@ -252,7 +269,7 @@ void bq76940_Alert_handler(void) {
 	bq76940->CC = bq_read_CC();
 
     //Here execute the connection or disconnection of back to back mosfet
-    bq_connect_pack(bq76940->request_connection_pack);
+	bq_connect_pack(bq76940->request_connection_pack);
 	
 	// Every 1 second make the long read
 	static uint8_t i = 0;
@@ -263,6 +280,7 @@ void bq76940_Alert_handler(void) {
 		bq_balance_cells(m_discharge_state);	//configure balancing bits over i2c
 		i = 0;
 	}
+
 
 	//read external temp for 2.5 sec, then internal temp for 2.5sec and repeat
 	static uint8_t temp_sensing_state = 1;
@@ -285,48 +303,52 @@ void bq76940_Alert_handler(void) {
 		temp_sensing_state = 0;
 	}
 
+	bq76940->is_load_present = status_load_present();
+
 
 
 //	LED_GREEN_DEBUG_OFF();
     
 }
-uint8_t afe_pool_count = 0;
+uint16_t afe_pool_count = 0;
 bool AFE_FAULT_FLAG = FALSE;
 static THD_FUNCTION(sample_thread, arg) {
 	(void)arg;
 	chRegSetThreadName("BQ76940");
 
 	while (!chThdShouldTerminateX()) {
+
 		m_i2c.has_error = 0;
 		AFE_FAULT_FLAG = FALSE;
+		afe_pool_count = 0;
+
 		while(!palReadPad(GPIOA,2U)){
 
-			if(afe_pool_count > 10){
-				write_reg(BQ_SYS_STAT,0xFF);// for future hard rev a hardware reset can be implemented
-				timeout_feed_WDT(THREAD_AFE);
+			if(afe_pool_count > 10){// if code reach here, the AFE is not active
+				write_reg(BQ_SYS_STAT,0xFF);
 				bms_if_fault_report(FAULT_CODE_NON_RESPONSE_AFE);
 				AFE_FAULT_FLAG = TRUE;
-				break;
+				while(1){chThdSleepMilliseconds(1000);}// loop here and wait for WD for restart
 			}
+			timeout_feed_WDT(THREAD_AFE);
 			chThdSleepMilliseconds(30);
-			//timeout_feed_WDT(THREAD_AFE);
 			afe_pool_count++;
 		}
 
 		if(!AFE_FAULT_FLAG){
 			bq76940_Alert_handler();
-			chThdSleepMilliseconds(10);
+			chThdSleepMilliseconds(1);
 			//check AFE response
 			if(palReadPad(GPIOA,2U)){
 				timeout_feed_WDT(THREAD_AFE);
 				bms_if_fault_report(FAULT_CODE_NON_RESPONSE_AFE);
 				write_reg(BQ_SYS_STAT,0xFF);//for future hard rev a hardware reset can be implemented
 			}
+		//bq76940_Alert_handler();
+
 		}
 
-		//timeout_feed_WDT(THREAD_AFE);
-
-    }
+	}
 }
 
 uint8_t write_reg(uint8_t reg, uint16_t val) {
@@ -493,8 +515,14 @@ void bq_request_connect_pack(bool flag) {
 
 void bq_connect_pack(bool request) {
 	if(request) {
-		bq_discharge_enable();
-		bq_charge_enable();
+		if(bq76940->connect_only_charger){
+			bq_discharge_disable();
+			bq_charge_enable();
+		}else{
+			bq_discharge_enable();
+			bq_charge_enable();
+		}
+
 	} else {
 		bq_discharge_disable();
 		bq_charge_disable();
@@ -619,5 +647,57 @@ float bq_get_CC_raw(void)
 	return bq_get_current() * bq76940->shunt_res / CC_REG_TO_AMPS_FACTOR;
 }
 
+bool bq_get_load_status(void)
+{
 
+	return bq76940->is_load_present;
+
+}
+
+bool bq_oc_sc_detected (void)
+{
+	return bq76940->oc_sc_detected;
+}
+
+void bq_restore_oc_sc_fail()
+{
+
+	bq76940->oc_sc_detected =  false;
+}
+
+bool bq_ov_detected(void)
+{
+
+	return bq76940->OV_detected;
+
+}
+
+bool bq_uv_detected(void)
+{
+
+	return bq76940->UV_detected;
+
+}
+
+void bq_restore_ov_fail()
+{
+
+	bq76940->OV_detected = false;
+
+}
+
+void bq_restore_uv_fail()
+{
+
+	bq76940->UV_detected = false;
+
+}
+
+void bq_connect_only_charger (bool request)
+{
+
+	bq76940->connect_only_charger = request;
+
+}
 #endif
+
