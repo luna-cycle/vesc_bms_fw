@@ -20,7 +20,6 @@
 #ifndef BQ76940_H_
 #define BQ76940_H_
 
-
 // SYS_STATUS bits
 #define NUM_REG			55
 #define ADC_EN			0x10
@@ -158,8 +157,6 @@
 #define BQ_ADCOFFSET	0x51
 #define BQ_ADCGAIN2		0x59
 
-// Macros
-
 typedef enum {
 	BQ76940_FAULT_NONE = 0,
 	BQ76940_FAULT_XREADY,
@@ -190,7 +187,7 @@ bool bq_get_load_status(void);
 void bq_restore_oc_sc_fail(void);
 bool bq_uv_detected(void);
 bool bq_ov_detected(void);
-void bq_restore_ov_fail(void);
-void bq_restore_uv_fail(void);
+void bq_restore_ov_fault(void);
+void bq_restore_uv_fault(void);
 void bq_connect_only_charger (bool);
 #endif /* BQ76940_H_ */

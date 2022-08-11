@@ -33,15 +33,15 @@
 #define USE_AFE_WD
 #define HW_BIDIRECTIONAL_SWITCH
 
-#define HW_MAX_TEMP_IC 			65 // AFE temp
-#define HW_MAX_MOSFET_TEMP		65 // MOSFET TEMP
-#define HW_MAX_CONNECTOR_TEMP	65 // power connectors and regulator max temp
-#define HW_MAX_VREG_TEMP 		65 // max pre regulator temp
-#define HW_MAX_SC_DISCHARGE_I	44 // short circuit current
-#define HW_MAX_OC_DISCHARGE_I	16 // overcurrent current
-#define HW_HYSTERESIS_TEMP		5  // hysteresis to avoid reconnecto on temp fail
-#define MAX_RECONNECT_ATTEMPT 	3	// max reconnection attempt after a short circuit or overcurrent
-#define RECONNECTION_TIMEOUT	3	// seconds to wait before reconnection attempt
+#define HW_MAX_TEMP_IC 			65.0	// AFE temp [°C]
+#define HW_MAX_MOSFET_TEMP		65.0	// MOSFET TEMP [°C]
+#define HW_MAX_CONNECTOR_TEMP	65.0	// power connectors and regulator max temp [°C]
+#define HW_MAX_VREG_TEMP 		65.0	// max pre regulator temp [°C]
+#define HW_MAX_SC_DISCHARGE_I	44.0	// short circuit current [A]
+#define HW_MAX_OC_DISCHARGE_I	16.0	// overcurrent current [A]
+#define HW_HYSTERESIS_TEMP		5.0		// hysteresis to avoid reconnecto on temp fault [°C]
+#define MAX_RECONNECT_ATTEMPT 	3		// max reconnection attempt after a short circuit or overcurrent
+#define RECONNECTION_TIMEOUT	3		// seconds to wait before reconnection attempt
 // Macros
 #define HW_INIT_HOOK()
 
@@ -51,7 +51,7 @@
 #define CHARGE_ENABLE()				bq_request_connect_pack(true)
 #define CHARGE_DISABLE()			bq_request_connect_pack(false)
 #define HW_GET_TEMP(sensors)		hw_luna_get_temp(sensors)
-#define HW_GET_TEMP_IC()            bq_get_temp_ic()
+#define HW_GET_TEMP_IC()			bq_get_temp_ic()
 #define HW_SET_DSC(cell, set)		bq_set_dsc(cell, set)
 #define HW_GET_DSC(cell)			bq_get_dsc(cell)
 #define HW_LAST_CELL_VOLTAGE(cell)	bq_last_cell_voltage(cell)
@@ -59,10 +59,10 @@
 #define HW_GET_V_CHARGE()			bq_last_pack_voltage()	//until we implement charge voltage measurement in hw
 #define HW_GET_I_IN()				bq_get_current()		//this hw wont read current using the mcu adc for the forseeable future
 #define HW_GET_I_IN_AFE				i_bms_ic = bq_get_current()
-#define HW_ZERO_CURRENT_OFFSET  	bq_get_CC_raw()
+#define HW_ZERO_CURRENT_OFFSET		bq_get_CC_raw()
 #define HW_AFE_SLEEP()				sleep_bq76940()
 #define HW_GET_BAL_TEMP()			hw_luna_get_bal_temp()
-#define HW_MOSFET_SENSOR()			hw_luna_get_temp(6) // return mosfet temp
+#define HW_MOSFET_SENSOR()			hw_luna_get_temp(6)		// return mosfet temp
 #define HW_CONNECTOR_TEMP()			hw_luna_get_connector_temp()
 #define HW_VREGULATOR_TEMP()		hw_luna_get_temp(7)
 #define HW_LOAD_DETECTION()			bq_get_load_status()
@@ -72,10 +72,8 @@
 #define HW_SC_OC_RESTORE()			bq_restore_oc_sc_fail()
 #define HW_OV_DETECTED()			bq_ov_detected()
 #define HW_UV_DETECTED()			bq_uv_detected()
-#define HW_OV_RESTORE_FAIL()		bq_restore_ov_fail()
-#define HW_UV_RESTORE_FAIL() 		bq_restore_uv_fail()
-
-//#define HW_SHUTDOWN_AFE()           bq_shutdown_bq76940()
+#define HW_OV_RESTORE_FAULT()		bq_restore_ov_fault()
+#define HW_UV_RESTORE_FAULT() 		bq_restore_uv_fault()
 
 // Settings
 #define HW_ADC_TEMP_SENSORS		8
@@ -90,19 +88,19 @@
 #define HW_SHUNT_RES			(0.0005)
 //More abstraction to setup the threshold shortcircuit current
 //Only if only the resistor shunt is 0.5mOhm
-#define CURRENT_44A     BQ_SCP_22mV
-#define CURRENT_66A     BQ_SCP_33mV
-#define CURRENT_88A     BQ_SCP_44mV
-#define CURRENT_112A    BQ_SCP_56mV
-#define CURRENT_134A    BQ_SCP_67mV
-#define CURRENT_156A    BQ_SCP_78mV
-#define CURRENT_178A    BQ_SCP_89mV
-#define CURRENT_200A    BQ_SCP_100mV
-#define CURRENT_222A    BQ_SCP_111mV
-#define CURRENT_266A    BQ_SCP_133mV
-#define CURRENT_310A    BQ_SCP_155mV
-#define CURRENT_356A    BQ_SCP_178mV
-#define CURRENT_400A    BQ_SCP_200mV
+#define CURRENT_44A		BQ_SCP_22mV
+#define CURRENT_66A		BQ_SCP_33mV
+#define CURRENT_88A		BQ_SCP_44mV
+#define CURRENT_112A	BQ_SCP_56mV
+#define CURRENT_134A	BQ_SCP_67mV
+#define CURRENT_156A	BQ_SCP_78mV
+#define CURRENT_178A	BQ_SCP_89mV
+#define CURRENT_200A	BQ_SCP_100mV
+#define CURRENT_222A	BQ_SCP_111mV
+#define CURRENT_266A	BQ_SCP_133mV
+#define CURRENT_310A	BQ_SCP_155mV
+#define CURRENT_356A	BQ_SCP_178mV
+#define CURRENT_400A	BQ_SCP_200mV
 
 //Values for OverCurrent setting
 #define CURRENT_16A		BQ_OCP_8mV
@@ -124,15 +122,12 @@
 #define CURRENT_188A	BQ_OCP_94mV
 
 // LEDs
-//#define LINE_LED_RED			PAL_LINE(GPIOA, 0)
-//#define LINE_LED_GREEN			PAL_LINE(GPIOA, 1)
+
 #define LINE_LED_RED			PAL_LINE(GPIOA, 0)
 #define LINE_LED_GREEN			PAL_LINE(GPIOA, 1)
-//#define LINE_LED_RED			
-//#define LINE_LED_GREEN			
 
-#define LINE_LED_RED_DEBUG         PAL_LINE(GPIOA, 0)
-#define LINE_LED_GREEN_DEBUG       PAL_LINE(GPIOA, 1)
+#define LINE_LED_RED_DEBUG			PAL_LINE(GPIOA, 0)
+#define LINE_LED_GREEN_DEBUG		PAL_LINE(GPIOA, 1)
 #define LED_RED_DEBUG_OFF()			palClearLine(LINE_LED_RED_DEBUG)
 #define LED_RED_DEBUG_ON()			palSetLine(LINE_LED_RED_DEBUG)
 #define LED_GREEN_DEBUG_OFF()		palClearLine(LINE_LED_GREEN_DEBUG)
@@ -199,7 +194,7 @@
 #define LINE_TEMP_5_EN			PAL_LINE(GPIOC, 2)
 #define LINE_TEMP_6_EN			PAL_LINE(GPIOC, 2)
 
-#define NTC_RES(adc)		(10000.0 * (float)adc / ( 4095.0 - (float)adc))
+#define NTC_RES(adc)			(10000.0 * (float)adc / ( 4095.0 - (float)adc))
 //#define NTC_RES(adc)			(10000.0 / ((4095.0 / (float)adc) - 1.0))
 #define NTC_TEMP(adc)			(1.0 / ((logf(NTC_RES(adc) / 10000.0) / 3380.0) + (1.0 / 298.15)) - 273.15)
 

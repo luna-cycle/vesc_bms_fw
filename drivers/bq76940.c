@@ -44,13 +44,12 @@ static i2c_bb_state  m_i2c;
 static float m_v_cell[MAX_CELL_NUM];
 static volatile bool m_discharge_state[MAX_CELL_NUM] = {false};
 
-//typedef struct __attribute__((packed)) {
 typedef struct {
 	i2c_bb_state m_i2c;
 	bool mutex;
 	bool initialized;
 	uint8_t status;
-    int lrd_pin;
+	int lrd_pin;
 	float shunt_res;
 	float gain;
 	float offset;
@@ -58,14 +57,14 @@ typedef struct {
 	float temp[MAX_TEMP_SENSORS_NUM];
 	float temp_ic;
 	float cell_mv[MAX_CELL_NUM];
-    uint32_t    padding;
+	uint32_t padding;
 	float pack_mv;
 	bool m_discharge_state[MAX_CELL_NUM];
 	bool discharge_enabled;
 	bool charge_enabled;
 	bool is_connected_pack;
 	bool request_connection_pack;
-	fault_data	fault;
+	fault_data fault;
 	bool is_load_present;
 	bool oc_sc_detected;
 	bool UV_detected;
@@ -77,23 +76,18 @@ typedef struct {
 // The config is stored in the backup struct so that it is stored while sleeping.
 static volatile bq76940_t *bq76940 = (bq76940_t*)&backup.hw_config[0];
 
-static void fault_data_cb(fault_data * const fault)
-{
+static void fault_data_cb(fault_data * const fault) {
 	bq76940->fault = *fault;
 }
 
-
 static I2CConfig i2cfg1 = {
-	     STM32_TIMINGR_PRESC(4U)  |            // Uing 16MHZ HSI clock to source I2CCLK.
-	     STM32_TIMINGR_SCLDEL(4U) | STM32_TIMINGR_SDADEL(2U) |
-	     STM32_TIMINGR_SCLH(15U)   | STM32_TIMINGR_SCLL(13U),
-	                    // Just scale bits 28..31 if not 8MHz clock
-	    0,              // CR1
-	    0,              // CR2
+	STM32_TIMINGR_PRESC(4U) | // Uing 16MHZ HSI clock to source I2CCLK.
+	STM32_TIMINGR_SCLDEL(4U) | STM32_TIMINGR_SDADEL(2U) |
+	STM32_TIMINGR_SCLH(15U) | STM32_TIMINGR_SCLL(13U),
+						// Just scale bits 28..31 if not 8MHz clock
+	0,					// CR1
+	0,					// CR2
 };
-
-
-
 
 // Threads
 static THD_WORKING_AREA(sample_thread_wa, 512);
@@ -116,16 +110,14 @@ uint8_t tripVoltage(float voltage);
 void bq_disconnect_battery(bool disconnect);
 bool status_load_present(void);
 //Macros
-#define READ_ALERT()						palReadPad(BQ76940_ALERT_GPIO, BQ76940_ALERT_PIN)
+#define READ_ALERT()	palReadPad(BQ76940_ALERT_GPIO, BQ76940_ALERT_PIN)
 
 uint8_t bq76940_init(void) {
-    float gain;
-    float offset;
-    
+	float gain;
+	float offset;
+
 	palSetLineMode(LINE_LED_RED_DEBUG, PAL_MODE_OUTPUT_PUSHPULL);
 	palSetLineMode(LINE_LED_GREEN_DEBUG, PAL_MODE_OUTPUT_PUSHPULL);
-
-//	LED_RED_DEBUG_ON();
 
 	bq76940->shunt_res = HW_SHUNT_RES;
 
@@ -164,7 +156,6 @@ uint8_t bq76940_init(void) {
 	// if we want to change the AFE configuration we have to reset it to default values and then it will be
 	// rećonfigured on the next MCU reset.
 	
-	
 	if((read_reg(BQ_SYS_CTRL1) & 0x08) == 0x00) {	//ADC_EN '1' in normal mode
 		if(read_reg(BQ_SYS_CTRL2) == 0x00) {
 
@@ -180,7 +171,7 @@ uint8_t bq76940_init(void) {
 			//UnderVoltage threshold
 			error |= write_reg(BQ_UV_TRIP, tripVoltage(2.80));
 			error |= write_reg(BQ_PROTECT3, BQ_UV_DELAY_4s);
-        
+
 			// Overcurrent protection
 			error |= write_reg(BQ_PROTECT2, (CURRENT_16A | BQ_OCP_8ms ));
 			// Short Circuit Protection
@@ -202,7 +193,7 @@ uint8_t bq76940_init(void) {
 			bq_connect_pack(true);
 		
 			// Mark the AFE as initialized for the next post-sleep resets
-			if (error == 0){
+			if (error == 0) {
 				bq76940->initialized = true;
 			} else {
 				bq76940->initialized = false;
@@ -215,50 +206,43 @@ uint8_t bq76940_init(void) {
 	return error;
 }
 
-
 // This function will be executed when the Alert pin is driven to '1' by the AFE
 void bq76940_Alert_handler(void) {
-//	LED_GREEN_DEBUG_ON();
-    
+
 	// Read Status Register
 	uint8_t sys_stat = read_reg(BQ_SYS_STAT);
 	// Report fault codes
 	if ( sys_stat & SYS_STAT_DEVICE_XREADY ) {
 		//handle error
-
 	}
+
 	if ( sys_stat & SYS_STAT_OVRD_ALERT ) {
 		//handle error
-
 	}
 
 	if ( sys_stat & SYS_STAT_UV ) {
 		bms_if_fault_report(FAULT_CODE_CELL_UNDERVOLTAGE);
-		//bq76940->request_connection_pack = false;
 		bq76940->UV_detected = true;
 
 	}
 
 	if ( sys_stat & SYS_STAT_OV ) {
 		bms_if_fault_report(FAULT_CODE_CELL_OVERVOLTAGE);
-		//bq76940->request_connection_pack = false;
 		bq76940->OV_detected = true;
 
 	}
 
 	if ( sys_stat & SYS_STAT_SCD ) {
 		bms_if_fault_report(FAULT_CODE_DISCHARGE_SHORT_CIRCUIT);
-		//bq76940->request_connection_pack = false;
 		bq76940->oc_sc_detected =  true;
 	}
 
 	if ( sys_stat & SYS_STAT_OCD ) {
 		bms_if_fault_report(FAULT_CODE_DISCHARGE_OVERCURRENT);
-		//bq76940->request_connection_pack = false;
 		bq76940->oc_sc_detected =  true;
 	}
 
-	if( bq76940->initialized == false ){
+	if( bq76940->initialized == false ) {
 		bms_if_fault_report(FAULT_CODE_DONT_INIT_AFE);
 		//bq76940->request_connection_pack = false;
 	}
@@ -269,85 +253,80 @@ void bq76940_Alert_handler(void) {
 	//Read pack current
 	bq76940->CC = bq_read_CC();
 
-    //Here execute the connection or disconnection of back to back mosfet
+	//Here execute the connection or disconnection of back to back mosfet
 	bq_connect_pack(bq76940->request_connection_pack);
 	
 	// Every 1 second make the long read
 	static uint8_t i = 0;
 
-	if(i++ == 4){
+	if( i++ == 4 ) {
 		read_cell_voltages(m_v_cell); 	//read cell voltages
 		read_v_batt(&bq76940->pack_mv);
 		bq_balance_cells(m_discharge_state);	//configure balancing bits over i2c
 		i = 0;
 	}
 
-
 	//read external temp for 2.5 sec, then internal temp for 2.5sec and repeat
 	static uint8_t temp_sensing_state = 1;
-	if(temp_sensing_state == 0) {
-		  	//read internal temperature
+	if( temp_sensing_state == 0 ) {
+			//read internal temperature
 			bq76940->temp_ic = bq_read_temp_ic();
 			//configure AFE so after 2 seconds the external temperature will become available
 			write_reg(BQ_SYS_CTRL1, (ADC_EN | TEMP_SEL));
 	}
 
-	if(temp_sensing_state == 10) {
-		  	//read external temperatures
+	if( temp_sensing_state == 10 ) {
+			//read external temperatures
 			bq_read_temps(bq76940->temp);
 			//configure AFE so after 2 seconds the internal temperature will become available
 			write_reg(BQ_SYS_CTRL1, ADC_EN);
 	}
 	temp_sensing_state++;
 
-	if(temp_sensing_state == 20) {
+	if( temp_sensing_state == 20 ) {
 		temp_sensing_state = 0;
 	}
 
 	bq76940->is_load_present = status_load_present();
 
-
-
-//	LED_GREEN_DEBUG_OFF();
-    
 }
+
 uint16_t afe_pool_count = 0;
 bool AFE_FAULT_FLAG = FALSE;
 static THD_FUNCTION(sample_thread, arg) {
 	(void)arg;
 	chRegSetThreadName("BQ76940");
 
-	while (!chThdShouldTerminateX()) {
+	while ( !chThdShouldTerminateX() ) {
 
 		m_i2c.has_error = 0;
 		AFE_FAULT_FLAG = FALSE;
 		afe_pool_count = 0;
 
-		while(!palReadPad(GPIOA,2U)){
+		while( !palReadPad(GPIOA,2U) ){
 
-			if(afe_pool_count > 10){// if code reach here, the AFE is not active
+			if( afe_pool_count > 10 ) {// if code reach here, the AFE is not active
 				write_reg(BQ_SYS_STAT,0xFF);
 				bms_if_fault_report(FAULT_CODE_NON_RESPONSE_AFE);
 
 				// reinit bq76940
 				bq76940->initialized = false;// the afe will re init in the next wake up
-				if(bq76940->re_init_retry > 3){
+				if( bq76940->re_init_retry > 3 ) {
 					bq76940->re_init_retry = 0;
 					bq_shutdown_bq76940();
 				}
 
-				while(1){chThdSleepMilliseconds(1000);}// loop here and wait for WD for restart
+				while( 1 ) {chThdSleepMilliseconds(1000);}// loop here and wait for WD for restart
 			}
 			timeout_feed_WDT(THREAD_AFE);
 			chThdSleepMilliseconds(30);
 			afe_pool_count++;
 		}
 
-
 		bq76940_Alert_handler();
 		chThdSleepMilliseconds(1);
 		//check AFE response
-		if(palReadPad(GPIOA,2U)){
+		if( palReadPad(GPIOA,2U) ) {
 			timeout_feed_WDT(THREAD_AFE);
 			bms_if_fault_report(FAULT_CODE_NON_RESPONSE_AFE);
 			write_reg(BQ_SYS_STAT,0xFF);//for future hard rev a hardware reset can be implemented
@@ -377,7 +356,7 @@ uint8_t write_reg(uint8_t reg, uint16_t val) {
 uint8_t read_reg(uint8_t reg){
 	uint8_t data;
 	i2cMasterTransmit(&I2CD2, BQ_I2C_ADDR, &reg, 1, &data, 2);
- 	return data;
+	return data;
 }
 
 int8_t bq_read_gain(float *gain){
@@ -398,10 +377,10 @@ int8_t bq_read_gain(float *gain){
 uint8_t tripVoltage(float threshold) {
 	uint32_t reg_val = (uint16_t)(threshold * 1000.0);
 	reg_val -= bq76940->offset;
-    reg_val *= 1000;
+	reg_val *= 1000;
 	reg_val /= bq76940->gain;
-    reg_val >>= 4;
-    reg_val &= 0x00FF;
+	reg_val >>= 4;
+	reg_val &= 0x00FF;
 	return ((uint8_t)reg_val);
 }
 
@@ -419,27 +398,28 @@ uint8_t CRC8(uint8_t *ptr, uint8_t len,uint8_t key){
 	uint8_t  i;
 	uint8_t  crc=0;
 
-    while(len-- != 0){
-        for(i=0x80; i!=0; i/=2){
-            if((crc & 0x80) != 0){
-                crc *= 2;
-                crc ^= key;
-            }
-            else
-                crc *= 2;
-            if((*ptr & i) != 0)
-                crc ^= key;
-        }
-        ptr++;
-    }
+	while( len-- != 0 ) {
+		for( i=0x80 ; i!=0; i/=2 ) {
+			if ((crc & 0x80) != 0 ) {
+				crc *= 2;
+				crc ^= key;
+			} else {
+				crc *= 2;
+			}
+			if ( (*ptr & i) != 0 ) {
+				crc ^= key;
+			}
+		}
+		ptr++;
+	}
 
-    return(crc);
+	return(crc);
 }
 
 static void read_cell_voltages(float *m_v_cell) {
 	float 	cell_voltages[MAX_CELL_NUM];
 
-	for (int i=0; i<MAX_CELL_NUM; i++) {
+	for ( int i=0 ; i < MAX_CELL_NUM ; i++) {
 		uint16_t VCx_lo = read_reg(BQ_VC1_LO + i * 2);
 		uint16_t VCx_hi = read_reg(BQ_VC1_HI + i * 2);
 		cell_voltages[i] = (((((float)(VCx_lo | (VCx_hi << 8))) * bq76940->gain) / 1e6)) + bq76940->offset;
@@ -452,7 +432,7 @@ static void read_cell_voltages(float *m_v_cell) {
 }
 
 float bq_last_cell_voltage(int cell) {
-	if (cell < 0 || cell >= MAX_CELL_NUM) {
+	if ( cell < 0 || cell >= MAX_CELL_NUM ) {
 		return -1.0;
 	}
 
@@ -468,7 +448,7 @@ void bq_read_temps(volatile float *temps) {
 	// only update TS3, the others are unused in this particular hardware
 	// make sure TEMP_SEL bit has been set to 1 for at leat 2 seconds
 
-	for(int i = 2 ; i < 3 ; i++){
+	for( int i = 2 ; i < 3 ; i++ ) {
 		uint16_t BQ_TSx_hi = read_reg(BQ_TS1_HI + i * 2 );
 		uint16_t BQ_TSx_lo = read_reg(BQ_TS1_LO + i * 2);
 		float vtsx = (float)((BQ_TSx_hi << 8) | BQ_TSx_lo) * 0.000382;
@@ -489,15 +469,14 @@ float bq_read_temp_ic(void) {
 	return temp_die;
 }
 
-float bq_get_temp(int sensor){
-	if (sensor < 0 || sensor >= 5){
+float bq_get_temp(int sensor) {
+	if ( sensor < 0 || sensor >= 5 ) {
 			return -1.0;
 	}
-
 	return bq76940->temp[sensor];
 }
 
-float bq_get_temp_ic(void){
+float bq_get_temp_ic(void) {
 	return bq76940->temp_ic;
 }
 
@@ -520,10 +499,10 @@ void bq_request_connect_pack(bool flag) {
 
 void bq_connect_pack(bool request) {
 	if(request) {
-		if(bq76940->connect_only_charger){
+		if( bq76940->connect_only_charger ) {
 			bq_discharge_disable();
 			bq_charge_enable();
-		}else{
+		} else {
 			bq_discharge_enable();
 			bq_charge_enable();
 		}
@@ -531,10 +510,10 @@ void bq_connect_pack(bool request) {
 	} else {
 		bq_discharge_disable();
 		bq_charge_disable();
-	}	
+	}
 }
 
-void bq_discharge_enable(void){
+void bq_discharge_enable(void) {
 	uint8_t data = read_reg(BQ_SYS_CTRL2);
 	data = data | 0x02;
 	write_reg(BQ_SYS_CTRL2, data);
@@ -542,7 +521,7 @@ void bq_discharge_enable(void){
 	return;
 }
 
-void bq_discharge_disable(void){
+void bq_discharge_disable(void) {
 	uint8_t data = read_reg(BQ_SYS_CTRL2);
 	data = data & 0xFD;
 	write_reg(BQ_SYS_CTRL2, data);
@@ -550,7 +529,7 @@ void bq_discharge_disable(void){
 	return;
 }
 
-void bq_charge_enable(void){
+void bq_charge_enable(void) {
 	uint8_t data = read_reg(BQ_SYS_CTRL2);
 	data = data | 0x01;
 	write_reg(BQ_SYS_CTRL2, data);
@@ -558,7 +537,7 @@ void bq_charge_enable(void){
 	return;
 }
 
-void bq_charge_disable(void){
+void bq_charge_disable(void) {
 	uint8_t data = read_reg(BQ_SYS_CTRL2);
 	data = data & 0xFE;
 	write_reg(BQ_SYS_CTRL2, data);
@@ -584,17 +563,11 @@ bool bq_get_dsc(int cell) {
 void bq_balance_cells(volatile bool *m_discharge_state) {
 	uint8_t buffer[3]= {0 ,0 ,0 };
 
-	/*
-	 * for(int i=0; i<5; i++){
-	 * buffer[*0*] = m_discharge_state[i]? (1 << i) : 0;
-	 * }
-	 */
 	buffer[0] = m_discharge_state[0] ? buffer[0] = 0x01 : buffer[0];
 	buffer[0] = m_discharge_state[1] ? buffer[0] = 0x02 : buffer[0];
 	buffer[0] = m_discharge_state[2] ? buffer[0] = 0x04 : buffer[0];
 	buffer[0] = m_discharge_state[3] ? buffer[0] = 0x08 : buffer[0];
 	buffer[0] = m_discharge_state[4] ? buffer[0] = 0x10 : buffer[0];
-	//chThdSleepMilliseconds(30);
 	write_reg(BQ_CELLBAL1, buffer[0]);
 
 	buffer[1] = m_discharge_state[5] ? buffer[1] = 0x01 : buffer[1];
@@ -602,107 +575,78 @@ void bq_balance_cells(volatile bool *m_discharge_state) {
 	buffer[1] = m_discharge_state[7] ? buffer[1] = 0x04 : buffer[1];
 	buffer[1] = m_discharge_state[8] ? buffer[1] = 0x08 : buffer[1];
 	buffer[1] = m_discharge_state[9] ? buffer[1] = 0x10 : buffer[1];
-	//chThdSleepMilliseconds(30);
 	write_reg(BQ_CELLBAL2, buffer[1]);
 
 	buffer[2] = m_discharge_state[10] ? buffer[2] = 0x01 : buffer[2];
 	buffer[2] = m_discharge_state[11] ? buffer[2] = 0x02 : buffer[2];
 	buffer[2] = m_discharge_state[12] ? buffer[2] = 0x0C : buffer[2];	// Special case for a 14s setup
 	buffer[2] = m_discharge_state[13] ? buffer[2] = 0x10 : buffer[2];
-	//chThdSleepMilliseconds(30);
 	write_reg(BQ_CELLBAL3, buffer[2]);
 
 	return;
 }
 
-bool status_load_present()
-{
-    uint8_t load_present = ((read_reg(BQ_SYS_CTRL1)) & 0X80 );
-    if(load_present == 0x80) {
-        return true;
-    }
-    else{
-        return false;
-    }
+bool status_load_present() {
+	uint8_t load_present = ((read_reg(BQ_SYS_CTRL1)) & 0X80 );
+	if( load_present == 0x80 ) {
+		return true;
+	} else {
+		return false;
+	}
 }
 
-static void read_v_batt(volatile float *v_bat){
+static void read_v_batt(volatile float *v_bat) {
 	uint16_t BAT_hi = read_reg(BQ_BAT_HI);
 	uint16_t BAT_lo = read_reg(BQ_BAT_LO);
-	
-    *v_bat = (float)(((uint16_t)(BAT_lo | BAT_hi << 8)) * CC_VBAT_TO_VOLTS_FACTOR )-(14 * bq76940->offset);
+
+	*v_bat = (float)(((uint16_t)(BAT_lo | BAT_hi << 8)) * CC_VBAT_TO_VOLTS_FACTOR )-(14 * bq76940->offset);
 }
 
-void sleep_bq76940()
-{
+void sleep_bq76940() {
 	write_reg(BQ_SYS_CTRL1, (ADC_DIS | TEMP_SEL));
-	//write_reg(BQ_SYS_CTRL2, CC_DIS);
 }
 
-void bq_shutdown_bq76940(void)
-{
-    //Shutdown everything frontend
-    write_reg(BQ_SYS_CTRL1, 0x00);
-    write_reg(BQ_SYS_CTRL1, 0x01);
+void bq_shutdown_bq76940(void) {
+	//Shutdown everything frontend
+	write_reg(BQ_SYS_CTRL1, 0x00);
+	write_reg(BQ_SYS_CTRL1, 0x01);
 	write_reg(BQ_SYS_CTRL1, 0x02);
 }
 
-float bq_get_CC_raw(void)
-{
+float bq_get_CC_raw(void) {
 	return bq_get_current() * bq76940->shunt_res / CC_REG_TO_AMPS_FACTOR;
 }
 
-bool bq_get_load_status(void)
-{
-
+bool bq_get_load_status(void) {
 	return bq76940->is_load_present;
-
 }
 
-bool bq_oc_sc_detected (void)
-{
+bool bq_oc_sc_detected (void) {
 	return bq76940->oc_sc_detected;
 }
 
-void bq_restore_oc_sc_fail()
-{
-
-	bq76940->oc_sc_detected =  false;
+void bq_restore_oc_sc_fail() {
+	bq76940->oc_sc_detected = false;
 }
 
-bool bq_ov_detected(void)
-{
-
+bool bq_ov_detected(void) {
 	return bq76940->OV_detected;
-
 }
 
-bool bq_uv_detected(void)
-{
-
+bool bq_uv_detected(void) {
 	return bq76940->UV_detected;
-
 }
 
-void bq_restore_ov_fail()
-{
-
+void bq_restore_ov_fault() {
 	bq76940->OV_detected = false;
-
 }
 
-void bq_restore_uv_fail()
-{
-
+void bq_restore_uv_fault() {
 	bq76940->UV_detected = false;
-
 }
 
-void bq_connect_only_charger (bool request)
-{
-
+void bq_connect_only_charger (bool request) {
 	bq76940->connect_only_charger = request;
-
 }
 #endif
 

@@ -22,7 +22,7 @@
 
 #define BMS_CHARGING 	1
 #define BMS_DISCHARGIN  2
-#define BMS_FAIL 		3
+#define BMS_FAULT 		3
 #define BMS_IDLE		0
 
 #include "conf_general.h"

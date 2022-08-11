@@ -110,65 +110,63 @@
 #endif
 
 #ifndef NTC_TEMP_WITH_IND
-#define NTC_TEMP_WITH_IND(adc, ind) NTC_TEMP(adc)
+#define NTC_TEMP_WITH_IND(adc, ind)	NTC_TEMP(adc)
 #endif
 
 #ifndef HW_MOSFET_SENSOR
-#define HW_MOSFET_SENSOR()  0.0		// if not mosfet temp measurement return 0
+#define HW_MOSFET_SENSOR()		0.0		// if not mosfet temp measurement return 0
 #endif
 
 #ifndef HW_CONNECTOR_TEMP
-#define HW_CONNECTOR_TEMP() 0.0		// if not connector temp measurement return 0
+#define HW_CONNECTOR_TEMP()		0.0		// if not connector temp measurement return 0
 #endif
-
 
 #ifndef HW_VREGULATOR_TEMP
-#define HW_VREGULATOR_TEMP() 0.0	// if not regulator temp measurement return 0
+#define HW_VREGULATOR_TEMP()	0.0		// if not regulator temp measurement return 0
 #endif
 
-
 #ifndef HW_MAX_TEMP_IC
-#define HW_MAX_TEMP_IC 120			// max internal AFE sensor temperature
+#define HW_MAX_TEMP_IC			120.0	// max internal AFE sensor temperature [°C]
 #endif
 
 #ifndef HW_MAX_MOSFET_TEMP
-#define HW_MAX_MOSFET_TEMP 120		// max switch  temperature
+#define HW_MAX_MOSFET_TEMP		120.0	// max switch  temperature [°C]
 #endif
 
 #ifndef HW_MAX_CONNECTOR_TEMP
-#define HW_MAX_CONNECTOR_TEMP 120	// max charge/discharge port temperature
+#define HW_MAX_CONNECTOR_TEMP	120.0	// max charge/discharge port temperature [°C]
 #endif
 
 #ifndef HW_MAX_VREG_TEMP
-#define HW_MAX_VREG_TEMP 120		// max regulator temperature
+#define HW_MAX_VREG_TEMP		120.0	// max regulator temperature [°C]
 #endif
 
 #ifndef HW_MAX_OC_DISCHARGE_I
-#define HW_MAX_OC_DISCHARGE_I	9 // overcurrent current
+#define HW_MAX_OC_DISCHARGE_I	9.0 	// overcurrent current [A]
 #endif
 
 #ifndef HW_MAX_SC_DISCHARGE_I
-#define HW_MAX_SC_DISCHARGE_I	44 // short circuit current
+#define HW_MAX_SC_DISCHARGE_I	44.0	// short circuit current [A]
 #endif
 
 #ifndef HW_HYSTERESIS_TEMP
-#define HW_HYSTERESIS_TEMP 5		// temp hysteresis to clear over temp or unter temp
+#define HW_HYSTERESIS_TEMP		5.0		// temp hysteresis to clear over temp or unter temp [°C]
 #endif
 
 #ifndef MAX_RECONNECT_ATTEMPT
-#define MAX_RECONNECT_ATTEMPT 3		// max reconnection attempts after a short circuit or overcurrent event
+#define MAX_RECONNECT_ATTEMPT	3		// max reconnection attempts after a short circuit or overcurrent event
 #endif
 
 #ifndef RECONNECTION_TIMEOUT
-#define RECONNECTION_TIMEOUT	3	// seconds to wait before reconnection attempt
+#define RECONNECTION_TIMEOUT	3		// seconds to wait before reconnection attempt
 #endif
 
 #ifndef HW_LOAD_DETECTION
-//#define HW_LOAD_DETECTION()			1 //if no load detection is implemented, asume that the load is always present
+#define HW_LOAD_DETECTION()		1		//if no load detection is implemented, asume that the load is always present
 #endif
 
 #ifndef HW_CHARGER_DETECTION
-#define HW_CHARGER_DETECTION()		1 //if no charger detecion is implemented assume that charger is always present
+#define HW_CHARGER_DETECTION()	1		//if no charger detecion is implemented assume that charger is always present
 #endif
 // Functions
 uint8_t hw_id_from_uuid(void);
