@@ -171,9 +171,11 @@ static THD_FUNCTION(charge_thd, p) {
 }
 #else
 uint8_t BMS_state = 0;
+uint16_t FAULT_BITS = 0;
+bms_fault_code FAULT_CODE = FAULT_CODE_NONE;
 float fabs_in_current = 0;
-bool flag_temp_ot_cell_fault = 0;
-bool flag_temp_ut_cell_fault = 0;
+bool flag_temp_OT_cell_fault = 0;
+bool flag_temp_UT_cell_fault = 0;
 bool flag_temp_hardware_fault = 0;
 bool flag_temp_Vreg_fault = 0;
 bool flag_UV_fault = 0;
@@ -182,8 +184,8 @@ bool flag_OV_fault_active = 0;
 bool flag_SC_fault = 0;
 bool flag_OC_fault = 0;
 bool flag_I_charge_fault = 0;
-bool flag_sc_discharge_fault = 0;
-bool flag_oc_discharge_fault = 0;
+bool flag_SC_discharge_fault = 0;
+bool flag_OC_discharge_fault = 0;
 bool flag_global_fault = 0;
 bool allow_ot_cell_fault_clear = 1;
 bool allow_ut_cell_fault_clear = 1;
@@ -219,24 +221,37 @@ static THD_FUNCTION(charge_discharge_thd,p){
 				break;
 			}
 		}
-		// check temp faults
-		if ( HW_TEMP_CELLS_MAX() >= backup.config.t_charge_max && backup.config.t_charge_mon_en ) {
-			bms_if_fault_report(FAULT_CODE_CELL_OVERTEMP);
-			flag_temp_ot_cell_fault = 1;
-			allow_ot_cell_fault_clear = 0;
-		} else {
-			if(allow_ot_cell_fault_clear){
-				flag_temp_ot_cell_fault = 0;
+
+		// check and clear faults
+
+		//check mcu V regulator temp
+		if ( bms_if_get_vreg_temp() > HW_MAX_VREG_TEMP ) {
+			bms_if_fault_report(FAULT_CODE_VREG_OVERTEMP);
+			flag_temp_Vreg_fault = 1;
+			allow_temp_Vreg_fault_clear = 0;
+		}else {
+			if(allow_temp_Vreg_fault_clear){
+				flag_temp_Vreg_fault = 0;
 			}
 		}
 
 		if ( HW_TEMP_CELLS_MIN() <= backup.config.t_charge_min && backup.config.t_charge_mon_en ) {
 			bms_if_fault_report(FAULT_CODE_CELL_UNDERTEMP);
-			flag_temp_ut_cell_fault = 1;
+			flag_temp_UT_cell_fault = 1;
 			allow_ut_cell_fault_clear = 0;
 		} else {
 			if(allow_ut_cell_fault_clear){
-				flag_temp_ut_cell_fault = 0;
+				flag_temp_UT_cell_fault = 0;
+			}
+		}
+
+		if ( HW_TEMP_CELLS_MAX() >= backup.config.t_charge_max && backup.config.t_charge_mon_en ) {
+			bms_if_fault_report(FAULT_CODE_CELL_OVERTEMP);
+			flag_temp_OT_cell_fault = 1;
+			allow_ot_cell_fault_clear = 0;
+		} else {
+			if(allow_ot_cell_fault_clear){
+				flag_temp_OT_cell_fault = 0;
 			}
 		}
 
@@ -252,19 +267,30 @@ static THD_FUNCTION(charge_discharge_thd,p){
 			}
 		}
 
-		//check mcu V regulator temp
-		if ( bms_if_get_vreg_temp() > HW_MAX_VREG_TEMP ) {
-			bms_if_fault_report(FAULT_CODE_HARDWARE_OVERTEMP);
-			flag_temp_Vreg_fault = 1;
-			allow_temp_Vreg_fault_clear = 0;
-		}else {
-			if(allow_temp_Vreg_fault_clear){
-				flag_temp_Vreg_fault = 0;
-			}
+		//check over current charge
+		if ( HW_GET_I_IN() > backup.config.max_charge_current ) {
+			flag_I_charge_fault = 1;
+		} else {
+			flag_I_charge_fault = 0;
+			oc_charge_count_attempt = 0;
+		}
+
+		// check short circuit discharge
+		if ( HW_SC_OC_DETECTED() ) {
+			flag_SC_discharge_fault = 1;//commands_printf("flag_SC_discharge_fault");
+		} else {
+			flag_SC_discharge_fault = 0;
+		}
+
+		// check over current discharge
+		if ( HW_SC_OC_DETECTED() ) {
+			flag_OC_discharge_fault = 1;//commands_printf("flag_OC_discharge_fault");
+		} else {
+			flag_OC_discharge_fault = 0;
 		}
 
 		//check cell under voltage
-		if( HW_UV_DETECTED() ) {
+		if ( HW_UV_DETECTED() ) {
 			bms_if_fault_report(FAULT_CODE_CELL_UNDERVOLTAGE);
 			flag_UV_fault = 1;
 		} else {
@@ -272,68 +298,69 @@ static THD_FUNCTION(charge_discharge_thd,p){
 		}
 
 		//check cell over voltage
-		if( HW_OV_DETECTED() && !flag_OV_fault ) {
+		if ( HW_OV_DETECTED() && !flag_OV_fault ) {
 			bms_if_fault_report(FAULT_CODE_CELL_OVERVOLTAGE);
 			balance_prev_state = backup.config.balance_mode; // store previous balance mode
 			backup.config.balance_mode = BALANCE_MODE_ALWAYS; // force balance
 			flag_OV_fault = 1;
 		}
 
-		if( !HW_OV_DETECTED() ){
+		if ( !HW_OV_DETECTED() ){
 			if( flag_OV_fault ) {// if there was a fault, the balance mode was changed to always, must be restored
 				backup.config.balance_mode = balance_prev_state;// restore balance mode if fault is cleared
 			}
 			flag_OV_fault = 0;
 		}
 
-		//check over current charge
-		if( HW_GET_I_IN() > backup.config.max_charge_current ) {
-			flag_I_charge_fault = 1;
+		//set FAULT_CODE according to priorities to be handle
+		if ( flag_temp_Vreg_fault ) {
+			FAULT_CODE = FAULT_CODE_VREG_OVERTEMP;
 		} else {
-			flag_I_charge_fault = 0;
-			oc_charge_count_attempt = 0;
+			if ( flag_temp_OT_cell_fault ) {
+				FAULT_CODE = FAULT_CODE_CELL_OVERTEMP;
+			} else {
+				if ( flag_temp_UT_cell_fault ) {
+					FAULT_CODE = FAULT_CODE_CELL_UNDERTEMP;
+				} else {
+					if ( flag_temp_hardware_fault ) {
+						FAULT_CODE = FAULT_CODE_HARDWARE_OVERTEMP;
+					} else {
+						if ( flag_I_charge_fault ) {
+							FAULT_CODE = FAULT_CODE_CHARGE_OVERCURRENT;
+						} else {
+							if ( flag_OC_discharge_fault || flag_SC_discharge_fault ) {
+								FAULT_CODE = FAULT_CODE_DISCHARGE_OVERCURRENT;
+							} else {
+								if ( flag_UV_fault ) {
+									FAULT_CODE = FAULT_CODE_CELL_UNDERVOLTAGE;
+								} else {
+									if ( flag_OV_fault ) {
+										FAULT_CODE = FAULT_CODE_CELL_OVERVOLTAGE;
+									} else {
+										FAULT_CODE = FAULT_CODE_NONE;
+									}
+								}
+							}
+						}
+					}
+				}
+			}
 		}
 
-		// check short circuit discharge, read stored I in current or check for hardware detection of OC
-
-		if( HW_SC_OC_DETECTED() ) {
-			flag_sc_discharge_fault = 1;
-		} else {
-			flag_sc_discharge_fault = 0;
-		}
-
-		// check over current discharge, read stored I in current of check for hardware detection of SC
-
-		if( HW_SC_OC_DETECTED() ) {
-			flag_oc_discharge_fault = 1;
-		} else {
-			flag_oc_discharge_fault = 0;
-		}
-
-		// declare global fault if any flag is set
-		if(flag_temp_ot_cell_fault || flag_temp_ut_cell_fault || flag_temp_hardware_fault ||
-		flag_temp_Vreg_fault || flag_UV_fault || flag_OV_fault || flag_SC_fault ||
-		flag_OC_fault || flag_I_charge_fault ||
-		flag_sc_discharge_fault || flag_oc_discharge_fault ) {
-			flag_global_fault = 1;
-		} else {
-			flag_global_fault = 0;
-		}
-
-		//check minimum sleep current
+		//check minumum sleep current
 		fabs_in_current = fabs(HW_GET_I_IN());
 		if( fabs_in_current > backup.config.min_current_sleep ) {
 			sleep_reset();// prevent sleeping
 		}
 
 		// check current direction
-		if( HW_GET_I_IN() > 0.03 && !flag_global_fault ) {// incoming current, pack is charging
+		if ( HW_GET_I_IN() > 0.03 && FAULT_CODE == FAULT_CODE_NONE ) {// incoming current, pack is charging
 			BMS_state = BMS_CHARGING;
 		} else {
-			if(HW_GET_I_IN() < -0.03 && !flag_global_fault){ // out going current, pack is dischargin
+			if ( HW_GET_I_IN() < -0.03 && FAULT_CODE == FAULT_CODE_NONE ) { // out going current, pack is dischargin
 				BMS_state = BMS_DISCHARGIN;
 			} else {
-				if(flag_global_fault) {
+				if ( FAULT_CODE != FAULT_CODE_NONE ) {
 					BMS_state = BMS_FAULT;
 				} else {
 					BMS_state = BMS_IDLE;//between -0.03 and 0.03 is considered adc noise, with no faults and no current bms is IDLE
@@ -359,135 +386,140 @@ static THD_FUNCTION(charge_discharge_thd,p){
 			case BMS_FAULT:// fault handler
 				sleep_reset();
 
-				if(flag_temp_Vreg_fault){
-					HW_PACK_DISCONNECT();
-					if(HW_VREGULATOR_TEMP() < (HW_MAX_VREG_TEMP - HW_HYSTERESIS_TEMP)){
-						allow_temp_Vreg_fault_clear = 1;
-					}else{
-					force_sleep(); // force the mcu to sleep to cool down the regulator
-					}
-				}else if(flag_temp_ot_cell_fault){
-					HW_PACK_DISCONNECT(); // disconnect pack until the temp is acceptable
-					if(HW_TEMP_CELLS_MAX() < (backup.config.t_charge_max - HW_HYSTERESIS_TEMP)){
-						allow_ot_cell_fault_clear = 1;
-					}
-				}else if(flag_temp_ut_cell_fault){
-					HW_PACK_DISCONNECT();// disconnect pack until the temp is acceptable
-					if(HW_TEMP_CELLS_MIN()  > (backup.config.t_charge_min + HW_HYSTERESIS_TEMP)){
-						allow_ut_cell_fault_clear = 1;
-					}
-				}else if(flag_temp_hardware_fault){
-					HW_PACK_DISCONNECT(); // disconnect pack until the temp is acceptable
-					if ((bms_if_get_temp_ic() < (HW_MAX_TEMP_IC - HW_HYSTERESIS_TEMP))  &&
+				switch(FAULT_CODE){
+					case FAULT_CODE_VREG_OVERTEMP:
+						HW_PACK_DISCONNECT();
+						if(HW_VREGULATOR_TEMP() < (HW_MAX_VREG_TEMP - HW_HYSTERESIS_TEMP)){
+							allow_temp_Vreg_fault_clear = 1;
+						}else{
+							force_sleep(); // force the mcu to sleep to cool down the regulator
+						}
+					break;
+
+					case FAULT_CODE_CELL_OVERTEMP:
+						HW_PACK_DISCONNECT();// disconnect pack until the temp is acceptable
+						if(HW_TEMP_CELLS_MAX() < (backup.config.t_charge_max - HW_HYSTERESIS_TEMP)){
+							allow_ot_cell_fault_clear = 1;
+						}
+					break;
+
+					case FAULT_CODE_CELL_UNDERTEMP:
+						HW_PACK_DISCONNECT();// disconnect pack until the temp is acceptable
+						if(HW_TEMP_CELLS_MIN()  > (backup.config.t_charge_min + HW_HYSTERESIS_TEMP)){
+							allow_ut_cell_fault_clear = 1;
+						}
+					break;
+
+					case FAULT_CODE_HARDWARE_OVERTEMP:
+						HW_PACK_DISCONNECT();// disconnect pack until the temp is acceptable
+						if ( (bms_if_get_temp_ic() < (HW_MAX_TEMP_IC - HW_HYSTERESIS_TEMP)) &&
 							(bms_if_get_temp_mosfet() < (HW_MAX_MOSFET_TEMP - HW_HYSTERESIS_TEMP)) &&
-									 (bms_if_get_connector_temp() < (HW_MAX_CONNECTOR_TEMP - HW_HYSTERESIS_TEMP ))){
-						allow_temp_hw_fault_clear = 1;
-					}
-				}else if(flag_oc_discharge_fault || flag_sc_discharge_fault){
-
-					HW_PACK_DISCONNECT(); // disconnect pack and wait for reconnection time out
-
-					if(oc_sc_count_attempt >= MAX_RECONNECT_ATTEMPT){
-														// wait for the current to ramp down
-						while(HW_LOAD_DETECTION()){		// if max attempt reached, wait for load removal. Is considered a
-							sleep_reset();				// critical fault so bms must be stay here until load
-							oc_sc_count_attempt = 0;	// is removed.
-							chThdSleepMilliseconds(1000);// if no load detection is implemented, the bms
-														//will continue to attempt connection every RECONNECTION_TIMEOUT
-
+							(bms_if_get_connector_temp() < (HW_MAX_CONNECTOR_TEMP - HW_HYSTERESIS_TEMP ))) {
+							allow_temp_hw_fault_clear = 1;
 						}
-						flag_oc_discharge_fault = 0;
-						flag_sc_discharge_fault = 0;
+					break;
 
-					}else{
-
-						//wait for reconnection timeout
-						for(oc_sc_timeout = (RECONNECTION_TIMEOUT * 10); oc_sc_timeout > 0 ; oc_sc_timeout--){
-							chThdSleepMilliseconds(100);
-							sleep_reset();
+					case FAULT_CODE_CHARGE_OVERCURRENT: // charge over current or short circuit
+						HW_PACK_DISCONNECT(); // disconnect pack and wait for reconnection time out
+						if ( oc_charge_count_attempt >= MAX_RECONNECT_ATTEMPT ) {
+							while ( !HW_CHARGER_DETECTED() ) {	// if max attempt reached, wait for charger removal. Is considered a
+								sleep_reset();					// critical fault so bms must be stay here until charged
+								oc_charge_count_attempt = 0;	// is removed
+								chThdSleepMilliseconds(1000);	// if no charger removal detection is implemented, the bms
+																//will continue to attempt connection every RECONNECTION_TIMEOUT
 							}
-						HW_SC_OC_RESTORE();
-						HW_PACK_CONNECT();
-						oc_sc_count_attempt++;
-					}
-
-				}else if(flag_I_charge_fault){
-					HW_PACK_DISCONNECT(); // disconnect pack and wait for reconnection time out
-					if(oc_charge_count_attempt >= MAX_RECONNECT_ATTEMPT)
-					{
-						while(!HW_CHARGER_DETECTED()){	// if max attempt reached, wait for charger removal. Is considered a
-							sleep_reset();				// critical fault so bms must be stay here until charged
-							oc_charge_count_attempt = 0;// is removed
-							chThdSleepMilliseconds(1000);// if no charger removal detection is implemented, the bms
-														//will continue to attempt connection every RECONNECTION_TIMEOUT
+							flag_I_charge_fault = 0;
+						} else {
+							//wait for reconnection timeout
+							for ( oc_charge_timeout = (RECONNECTION_TIMEOUT * 10) ; oc_charge_timeout > 0 ; oc_charge_timeout-- ) {
+								chThdSleepMilliseconds(100);
+								sleep_reset();
 							}
-						flag_I_charge_fault = 0;
-					}else{
-						//wait for reconnection timeout
-						for(oc_charge_timeout = (RECONNECTION_TIMEOUT * 10); oc_charge_timeout > 0 ; oc_charge_timeout--){
-							chThdSleepMilliseconds(100);
-							sleep_reset();
+							HW_PACK_CONNECT();
+							oc_charge_count_attempt++;
 						}
-						HW_PACK_CONNECT();
-						oc_charge_count_attempt++;
-					}
-				}else if(flag_UV_fault){
-					// disconnect load
-					HW_PACK_CONN_ONLY_CHARGE(true);// allow only charging
-					HW_PACK_CONNECT();//connect pack, the discharge will be disconnected
+					break;
 
-					// check for in current
-					if(HW_GET_I_IN() > 0.1){// incoming current, pack is charging
-						HW_PACK_CONN_ONLY_CHARGE(false);// connect discharge and charge ports
-						HW_PACK_CONNECT();//connect pack
+					case FAULT_CODE_DISCHARGE_OVERCURRENT:
+						HW_PACK_DISCONNECT(); // disconnect pack and wait for reconnection time out
+						if ( oc_sc_count_attempt >= MAX_RECONNECT_ATTEMPT ) {
+																// wait for the current to ramp down
+							while(HW_LOAD_DETECTION()){			// if max attempt reached, wait for load removal. Is considered a
+								sleep_reset();					// critical fault so bms must be stay here until load
+								oc_sc_count_attempt = 0;		// is removed.
+								chThdSleepMilliseconds(1000);	// if no load detection is implemented, the bms
+																//will continue to attempt connection every RECONNECTION_TIMEOUT
+							}
+							flag_OC_discharge_fault = 0;
+							flag_SC_discharge_fault = 0;
+							HW_SC_OC_RESTORE();
+							} else {
+							//wait for reconnection timeout
+							for ( oc_sc_timeout = (RECONNECTION_TIMEOUT * 10) ; oc_sc_timeout > 0 ; oc_sc_timeout-- ) {
+								chThdSleepMilliseconds(100);
+								sleep_reset();
+							}
+							HW_SC_OC_RESTORE();
+							HW_PACK_CONNECT();
+							oc_sc_count_attempt++;
+						}
+					break;
 
-						}else if(HW_GET_I_IN() < -0.1 ){ // out going current, pack is discharging
-							HW_PACK_CONN_ONLY_CHARGE(true);// allow only charging
+					case FAULT_CODE_CELL_UNDERVOLTAGE:
+						// disconnect load
+						HW_PACK_CONN_ONLY_CHARGE(true);// allow only charging
+						HW_PACK_CONNECT();//connect pack, the discharge will be disconnected
+
+						// check for in current
+						if(HW_GET_I_IN() > 0.1){// incoming current, pack is charging
+							HW_PACK_CONN_ONLY_CHARGE(false);// connect discharge and charge ports
 							HW_PACK_CONNECT();//connect pack
-						}
-					float v_min_aux = 100.0;
-					float cell_min = 0;
-					// acquire min and max cell
-					for (int i = backup.config.cell_first_index;i <
-					(backup.config.cell_num + backup.config.cell_first_index);i++) {
-						if (HW_LAST_CELL_VOLTAGE(i) < v_min_aux) {
-							v_min_aux = HW_LAST_CELL_VOLTAGE(i);
-						}
-					}
-					cell_min = v_min_aux;
-
-					if(cell_min > 2.8){ //todo #define min cell
-					for(uv_charge_timeout = (RECONNECTION_TIMEOUT * 10); uv_charge_timeout > 0 ; uv_charge_timeout--){
-							chThdSleepMilliseconds(100); // wait for time out before reconnect
-							sleep_reset();
+							} else {
+								if(HW_GET_I_IN() < -0.1 ){ // out going current, pack is discharging
+									HW_PACK_CONN_ONLY_CHARGE(true);// allow only charging
+									HW_PACK_CONNECT();//connect pack
+							}
 						}
 
-						HW_UV_RESTORE_FAULT(); // restore fault, back to normal mode
-						HW_PACK_CONN_ONLY_CHARGE(false);// allow charge and discharge
-
-					}
-
-				}else if(flag_OV_fault){
-					HW_PACK_DISCONNECT();
-
-					float v_max_aux = 0.0;
-					float cell_max = 0;
-					// adquire min and max cell
-					for (int i = backup.config.cell_first_index;i <
-					(backup.config.cell_num + backup.config.cell_first_index);i++) {
-						if (HW_LAST_CELL_VOLTAGE(i) > v_max_aux) {
-							v_max_aux = HW_LAST_CELL_VOLTAGE(i);
+						float v_min_aux = 100.0;
+						float cell_min = 0;
+						// acquire min cell
+						for (int i = backup.config.cell_first_index;i <
+						(backup.config.cell_num + backup.config.cell_first_index);i++) {
+							if (HW_LAST_CELL_VOLTAGE(i) < v_min_aux) {
+								v_min_aux = HW_LAST_CELL_VOLTAGE(i);
+							}
 						}
+						cell_min = v_min_aux;
+						if(cell_min > 2.8){ //todo #define min cell
+							for(uv_charge_timeout = (RECONNECTION_TIMEOUT * 10); uv_charge_timeout > 0 ; uv_charge_timeout--){
+								chThdSleepMilliseconds(100); // wait for time out before reconnect
+								sleep_reset();
+							}
+							HW_UV_RESTORE_FAULT(); // restore fault, back to normal mode
+							HW_PACK_CONN_ONLY_CHARGE(false);// allow charge and discharge
+						}
+					break;
 
-					}
+					case FAULT_CODE_CELL_OVERVOLTAGE:
+						HW_PACK_DISCONNECT();
+						float v_max_aux = 0.0;
+						float cell_max = 0;
+						// acquire max cell
+						for (int i = backup.config.cell_first_index;i < (backup.config.cell_num + backup.config.cell_first_index) ;i++ ) {
+							if (HW_LAST_CELL_VOLTAGE(i) > v_max_aux) {
+								v_max_aux = HW_LAST_CELL_VOLTAGE(i);
+							}
+						}
+						cell_max = v_max_aux;
+						if(cell_max < 4.2){// todo: #define max cell
+							HW_OV_RESTORE_FAULT();
+						}
+					break;
 
-					cell_max = v_max_aux;
+					default:
+					break;
 
-					if(cell_max < 4.2){// todo: #define max cell
-						HW_OV_RESTORE_FAULT();
-					}
-				}else{// no fault flag
-					BMS_state = BMS_IDLE;
 				}
 
 			break;// end faults handler
