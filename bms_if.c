@@ -239,9 +239,12 @@ static THD_FUNCTION(charge_discharge_thd,p){
 			bms_if_fault_report(FAULT_CODE_CELL_UNDERTEMP);
 			flag_temp_UT_cell_fault = 1;
 			allow_ut_cell_fault_clear = 0;
+		//	balance_prev_state = backup.config.balance_mode; // store previous balance mode
+		//	backup.config.balance_mode = BALANCE_MODE_DISABLED; // force disable balance until the temp is acceptable
 		} else {
 			if(allow_ut_cell_fault_clear){
 				flag_temp_UT_cell_fault = 0;
+				//backup.config.balance_mode = balance_prev_state;// restore balance mode if fault is cleared
 			}
 		}
 
@@ -249,9 +252,12 @@ static THD_FUNCTION(charge_discharge_thd,p){
 			bms_if_fault_report(FAULT_CODE_CELL_OVERTEMP);
 			flag_temp_OT_cell_fault = 1;
 			allow_ot_cell_fault_clear = 0;
+			//balance_prev_state = backup.config.balance_mode; // store previous balance mode
+			//backup.config.balance_mode = BALANCE_MODE_DISABLED; // force disable balance until the temp is acceptable
 		} else {
 			if(allow_ot_cell_fault_clear){
 				flag_temp_OT_cell_fault = 0;
+				//backup.config.balance_mode = balance_prev_state;// restore balance mode if fault is cleared
 			}
 		}
 
@@ -277,14 +283,14 @@ static THD_FUNCTION(charge_discharge_thd,p){
 
 		// check short circuit discharge
 		if ( HW_SC_OC_DETECTED() ) {
-			flag_SC_discharge_fault = 1;//commands_printf("flag_SC_discharge_fault");
+			flag_SC_discharge_fault = 1;
 		} else {
 			flag_SC_discharge_fault = 0;
 		}
 
 		// check over current discharge
 		if ( HW_SC_OC_DETECTED() ) {
-			flag_OC_discharge_fault = 1;//commands_printf("flag_OC_discharge_fault");
+			flag_OC_discharge_fault = 1;
 		} else {
 			flag_OC_discharge_fault = 0;
 		}
@@ -346,7 +352,7 @@ static THD_FUNCTION(charge_discharge_thd,p){
 				}
 			}
 		}
-
+commands_printf("%d %d %d %d %d %d %d %d ", flag_temp_Vreg_fault,flag_temp_OT_cell_fault,flag_temp_UT_cell_fault,flag_temp_hardware_fault,flag_I_charge_fault,flag_OC_discharge_fault,flag_UV_fault,flag_OV_fault); // print the fault ov fault flag
 		//check minumum sleep current
 		fabs_in_current = fabs(HW_GET_I_IN());
 		if( fabs_in_current > backup.config.min_current_sleep ) {
@@ -367,7 +373,7 @@ static THD_FUNCTION(charge_discharge_thd,p){
 				}
 			}
 		}
-
+commands_printf("%d",BMS_state);
 		switch(BMS_state){
 
 			case BMS_CHARGING:	// de activate discharge port
@@ -511,7 +517,7 @@ static THD_FUNCTION(charge_discharge_thd,p){
 								v_max_aux = HW_LAST_CELL_VOLTAGE(i);
 							}
 						}
-						cell_max = v_max_aux;
+						cell_max = v_max_aux;commands_printf("%f",cell_max);// print max cell during overvoltage fault
 						if(cell_max < 4.2){// todo: #define max cell
 							HW_OV_RESTORE_FAULT();
 						}

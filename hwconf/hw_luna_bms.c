@@ -28,6 +28,8 @@ static void terminal_cmd_connect(int argc, const char **argv);
 
 void hw_luna_init(void){
     bq76940_init();
+    palSetLineMode(LINE_CAN_EN, PAL_MODE_OUTPUT_PUSHPULL);
+    HW_CAN_ON();
 	terminal_register_command_callback("shipmode", "Shipmode = turn off bq 76940", 0, terminal_cmd_shipmode);	
     terminal_register_command_callback("Connect", "Connect=turn on big mosfets", 0, terminal_cmd_connect);	
 }

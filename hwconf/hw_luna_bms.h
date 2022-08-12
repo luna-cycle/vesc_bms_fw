@@ -180,8 +180,8 @@
 
 //CANbus
 #define LINE_CAN_EN				PAL_LINE(GPIOB, 7)
-#define HW_CAN_ON()				palClearLine(LINE_CAN_EN)
-#define HW_CAN_OFF()			palSetLine(LINE_CAN_EN)
+#define HW_CAN_ON()				palSetLine(LINE_CAN_EN)
+#define HW_CAN_OFF()			palClearLine(LINE_CAN_EN)
 
 // Enable thermistor bank A
 #define LINE_TEMP_0_EN			PAL_LINE(GPIOB, 1)

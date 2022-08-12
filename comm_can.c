@@ -27,6 +27,7 @@
 #include "utils.h"
 #include "timeout.h"
 #include "sleep.h"
+#include HW_HEADER
 
 #include <string.h>
 
@@ -117,6 +118,17 @@ void comm_can_init(void) {
 
 void comm_can_set_baud(CAN_BAUD baud) {
 	switch (baud) {
+#ifdef HW_USE_HSI16
+	case CAN_BAUD_125K:	set_timing(15, 14, 3); break;
+	case CAN_BAUD_250K:	set_timing(7, 14, 3); break;
+	case CAN_BAUD_500K:	set_timing(3, 14, 3); break;
+	case CAN_BAUD_1M:	set_timing(1, 14, 3); break;
+	case CAN_BAUD_10K:	set_timing(199, 14, 3); break;
+	case CAN_BAUD_20K:	set_timing(99, 14, 3); break;
+	case CAN_BAUD_50K:	set_timing(39, 14, 3); break;
+	case CAN_BAUD_75K:	set_timing(58, 5, 1); break; // 75.329...
+
+#else
 	case CAN_BAUD_125K:	set_timing(31, 14, 3); break;
 	case CAN_BAUD_250K:	set_timing(15, 14, 3); break;
 	case CAN_BAUD_500K:	set_timing(7, 14, 3); break;
@@ -125,6 +137,7 @@ void comm_can_set_baud(CAN_BAUD baud) {
 	case CAN_BAUD_20K:	set_timing(199, 14, 3); break;
 	case CAN_BAUD_50K:	set_timing(79, 14, 3); break;
 	case CAN_BAUD_75K:	set_timing(118, 5, 1); break; // 74.697...
+#endif
 	default: break;
 	}
 }
