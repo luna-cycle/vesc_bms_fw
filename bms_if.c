@@ -352,7 +352,7 @@ static THD_FUNCTION(charge_discharge_thd,p){
 				}
 			}
 		}
-commands_printf("%d %d %d %d %d %d %d %d ", flag_temp_Vreg_fault,flag_temp_OT_cell_fault,flag_temp_UT_cell_fault,flag_temp_hardware_fault,flag_I_charge_fault,flag_OC_discharge_fault,flag_UV_fault,flag_OV_fault); // print the fault ov fault flag
+
 		//check minumum sleep current
 		fabs_in_current = fabs(HW_GET_I_IN());
 		if( fabs_in_current > backup.config.min_current_sleep ) {
@@ -373,7 +373,8 @@ commands_printf("%d %d %d %d %d %d %d %d ", flag_temp_Vreg_fault,flag_temp_OT_ce
 				}
 			}
 		}
-commands_printf("%d",BMS_state);
+//commands_printf("%d %d %d %d %d %d %d %d", flag_temp_Vreg_fault, flag_temp_OT_cell_fault, flag_temp_UT_cell_fault, flag_temp_hardware_fault, flag_I_charge_fault, flag_OC_discharge_fault , flag_UV_fault, flag_OV_fault );
+//commands_printf("%d",BMS_state);
 		switch(BMS_state){
 
 			case BMS_CHARGING:	// de activate discharge port
@@ -517,7 +518,7 @@ commands_printf("%d",BMS_state);
 								v_max_aux = HW_LAST_CELL_VOLTAGE(i);
 							}
 						}
-						cell_max = v_max_aux;commands_printf("%f",cell_max);// print max cell during overvoltage fault
+						cell_max = v_max_aux;
 						if(cell_max < 4.2){// todo: #define max cell
 							HW_OV_RESTORE_FAULT();
 						}
