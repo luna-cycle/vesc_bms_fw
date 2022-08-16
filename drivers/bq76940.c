@@ -156,7 +156,7 @@ uint8_t bq76940_init(void) {
 	// if we want to change the AFE configuration we have to reset it to default values and then it will be
 	// rećonfigured on the next MCU reset.
 	
-	if((read_reg(BQ_SYS_CTRL1) & 0x08) == 0x00) {	//ADC_EN '1' in normal mode
+	if((read_reg(BQ_SYS_CTRL1) & 0x10) == 0x00) {	//ADC_EN '1' in normal mode
 		if(read_reg(BQ_SYS_CTRL2) == 0x00) {
 
 			// enable ADC and thermistors
@@ -166,8 +166,8 @@ uint8_t bq76940_init(void) {
 			error |= write_reg(BQ_CC_CFG, 0x19);
 		
 			//OverVoltage threshold
-			error |= write_reg(BQ_OV_TRIP, tripVoltage(4.25));
-			error |= write_reg(BQ_PROTECT3, BQ_OV_DELAY_4s);
+			error |= write_reg(BQ_OV_TRIP, tripVoltage(4.2));
+			error |= write_reg(BQ_PROTECT3, BQ_OV_DELAY_1s);
 			//UnderVoltage threshold
 			error |= write_reg(BQ_UV_TRIP, tripVoltage(2.80));
 			error |= write_reg(BQ_PROTECT3, BQ_UV_DELAY_4s);
@@ -376,9 +376,8 @@ int8_t bq_read_gain(float *gain){
 // convert a voltage into the format used by the trip registers
 uint8_t tripVoltage(float threshold) {
 	uint32_t reg_val = (uint16_t)(threshold * 1000.0);
-	reg_val -= bq76940->offset;
-	reg_val *= 1000;
-	reg_val /= bq76940->gain;
+	reg_val -= (bq76940->offset * 1000);
+	reg_val /= ( bq76940->gain / 1e3);
 	reg_val >>= 4;
 	reg_val &= 0x00FF;
 	return ((uint8_t)reg_val);
