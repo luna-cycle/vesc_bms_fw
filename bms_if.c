@@ -196,7 +196,9 @@ uint8_t oc_charge_count_attempt = 0;
 uint16_t oc_sc_timeout = 0;
 uint16_t oc_charge_timeout = 0;
 uint16_t uv_charge_timeout = 0;
+bool charger_connected = false;
 BMS_BALANCE_MODE balance_prev_state = 0;
+BMS_BALANCE_MODE balance_prev_state_temp = 0;
 static THD_FUNCTION(charge_discharge_thd,p){
 	(void)p;
 	chRegSetThreadName("Charge_Discharge");
@@ -235,40 +237,50 @@ static THD_FUNCTION(charge_discharge_thd,p){
 			}
 		}
 
-		if ( HW_TEMP_CELLS_MIN() <= backup.config.t_charge_min && backup.config.t_charge_mon_en ) {
+		if ( HW_TEMP_CELLS_MIN() <= backup.config.t_charge_min && backup.config.t_charge_mon_en && !flag_temp_UT_cell_fault) {
 			bms_if_fault_report(FAULT_CODE_CELL_UNDERTEMP);
 			flag_temp_UT_cell_fault = 1;
 			allow_ut_cell_fault_clear = 0;
-		//	balance_prev_state = backup.config.balance_mode; // store previous balance mode
-		//	backup.config.balance_mode = BALANCE_MODE_DISABLED; // force disable balance until the temp is acceptable
+			balance_prev_state_temp = backup.config.balance_mode; // store previous balance mode
+			backup.config.balance_mode = BALANCE_MODE_DISABLED; // force disable balance until the temp is acceptable
 		} else {
 			if(allow_ut_cell_fault_clear){
+				if( flag_temp_UT_cell_fault ) {
+					backup.config.balance_mode = balance_prev_state_temp;// restore balance mode if fault is cleared
+				}
 				flag_temp_UT_cell_fault = 0;
-				//backup.config.balance_mode = balance_prev_state;// restore balance mode if fault is cleared
+
 			}
 		}
 
-		if ( HW_TEMP_CELLS_MAX() >= backup.config.t_charge_max && backup.config.t_charge_mon_en ) {
+		if ( HW_TEMP_CELLS_MAX() >= backup.config.t_charge_max && backup.config.t_charge_mon_en && !flag_temp_OT_cell_fault) {
 			bms_if_fault_report(FAULT_CODE_CELL_OVERTEMP);
 			flag_temp_OT_cell_fault = 1;
 			allow_ot_cell_fault_clear = 0;
-			//balance_prev_state = backup.config.balance_mode; // store previous balance mode
-			//backup.config.balance_mode = BALANCE_MODE_DISABLED; // force disable balance until the temp is acceptable
+			balance_prev_state_temp = backup.config.balance_mode; // store previous balance mode
+			backup.config.balance_mode = BALANCE_MODE_DISABLED; // force disable balance until the temp is acceptable
 		} else {
 			if(allow_ot_cell_fault_clear){
+				if( flag_temp_OT_cell_fault ) {
+					backup.config.balance_mode = balance_prev_state_temp;// restore balance mode if fault is cleared
+				}
 				flag_temp_OT_cell_fault = 0;
-				//backup.config.balance_mode = balance_prev_state;// restore balance mode if fault is cleared
 			}
 		}
 
 		//check hardware temp
-		if ( (bms_if_get_temp_ic() > HW_MAX_TEMP_IC) || (bms_if_get_temp_mosfet() > HW_MAX_MOSFET_TEMP )
-		|| (bms_if_get_connector_temp() > HW_MAX_CONNECTOR_TEMP) ){
+		if ( ((bms_if_get_temp_ic() > HW_MAX_TEMP_IC) || (bms_if_get_temp_mosfet() > HW_MAX_MOSFET_TEMP )
+		|| (bms_if_get_connector_temp() > HW_MAX_CONNECTOR_TEMP)) && !flag_temp_hardware_fault){
 			bms_if_fault_report(FAULT_CODE_HARDWARE_OVERTEMP);
 			flag_temp_hardware_fault = 1;
 			allow_temp_hw_fault_clear = 0;
+			balance_prev_state_temp = backup.config.balance_mode; // store previous balance mode
+			backup.config.balance_mode = BALANCE_MODE_DISABLED; // force disable balance until the temp is acceptable
 		} else {
 			if(allow_temp_hw_fault_clear) {
+				if( flag_temp_hardware_fault ) {
+					backup.config.balance_mode = balance_prev_state_temp;// restore balance mode if fault is cleared
+				}
 				flag_temp_hardware_fault = 0;
 			}
 		}
@@ -373,26 +385,32 @@ static THD_FUNCTION(charge_discharge_thd,p){
 				}
 			}
 		}
-commands_printf("%d %d %d %d %d %d %d %d", flag_temp_Vreg_fault, flag_temp_OT_cell_fault, flag_temp_UT_cell_fault, flag_temp_hardware_fault, flag_I_charge_fault, flag_OC_discharge_fault , flag_UV_fault, flag_OV_fault );
-commands_printf("%d",BMS_state);
+//commands_printf("%d %d %d %d %d %d %d %d", flag_temp_Vreg_fault, flag_temp_OT_cell_fault, flag_temp_UT_cell_fault, flag_temp_hardware_fault, flag_I_charge_fault, flag_OC_discharge_fault , flag_UV_fault, flag_OV_fault );
+//commands_printf("%d",BMS_state);
 		switch(BMS_state){
 
 			case BMS_CHARGING:	// de activate discharge port
 				m_is_charging = true;
 				HW_PACK_CONN_ONLY_CHARGE(false);
 				HW_PACK_CONNECT();
-//TODO: download the backup array to flash if charger is connected
+				if( !charger_connected ) {
+					flash_helper_store_backup_data(); // Store data and counters to flash every time charger is disconnected
+				}
+				charger_connected = true;
+
 			break;
 
 			case BMS_DISCHARGIN:// de activate charge port
 				HW_PACK_CONN_ONLY_CHARGE(false);
 				HW_PACK_CONNECT();
-
+				charger_connected = false;
+				m_is_charging = false;
 			break;
 
 			case BMS_FAULT:// fault handler
 				sleep_reset();
-
+				charger_connected = false;
+				m_is_charging = false;
 				switch(FAULT_CODE){
 					case FAULT_CODE_VREG_OVERTEMP:
 						HW_PACK_DISCONNECT();
@@ -498,7 +516,7 @@ commands_printf("%d",BMS_state);
 							}
 						}
 						cell_min = v_min_aux;
-						if(cell_min > 2.8){ //todo #define min cell
+						if(cell_min > ( HW_MIN_CELL + HW_HYSTEREIS_MIN_CELL) ){
 							for(uv_charge_timeout = (RECONNECTION_TIMEOUT * 10); uv_charge_timeout > 0 ; uv_charge_timeout--){
 								chThdSleepMilliseconds(100); // wait for time out before reconnect
 								sleep_reset();
@@ -519,7 +537,7 @@ commands_printf("%d",BMS_state);
 							}
 						}
 						cell_max = v_max_aux;
-						if(cell_max < 4.1){// todo: #define max cell
+						if(cell_max < ( HW_MAX_CELL - HW_HYSTEREIS_MAX_CELL) ){
 							HW_OV_RESTORE_FAULT();
 						}
 					break;
@@ -532,7 +550,8 @@ commands_printf("%d",BMS_state);
 			break;// end faults handler
 
 			case BMS_IDLE:// activate charge and discharge ports, waiting for in or out current
-
+				m_is_charging = false;
+				charger_connected = false;
 				HW_PACK_CONN_ONLY_CHARGE(false);
 				HW_PACK_CONNECT();
 

@@ -27,11 +27,11 @@ static void terminal_cmd_shipmode(int argc, const char **argv);
 static void terminal_cmd_connect(int argc, const char **argv);
 
 void hw_luna_init(void){
-    bq76940_init();
-    HW_SET_CAN_ENABLE_LINE();
-    HW_CAN_ON();
+	bq76940_init();
+	HW_SET_CAN_ENABLE_LINE();
+	HW_CAN_ON();
 	terminal_register_command_callback("shipmode", "Shipmode = turn off bq 76940", 0, terminal_cmd_shipmode);	
-    terminal_register_command_callback("Connect", "Connect=turn on big mosfets", 0, terminal_cmd_connect);	
+	terminal_register_command_callback("Connect", "Connect=turn on big mosfets", 0, terminal_cmd_connect);
 }
 
 float hw_luna_get_cell_temp_max(void) {

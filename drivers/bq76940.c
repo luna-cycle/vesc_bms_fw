@@ -155,50 +155,48 @@ uint8_t bq76940_init(void) {
 	// If SYS_CTRL1 and SYS_CTRL2 are 0x00 it means that the AFE is not configured. Lets configure it.
 	// if we want to change the AFE configuration we have to reset it to default values and then it will be
 	// rećonfigured on the next MCU reset.
-	
-	if((read_reg(BQ_SYS_CTRL1) & 0x10) == 0x00) {	//ADC_EN '1' in normal mode
-		if(read_reg(BQ_SYS_CTRL2) == 0x00) {
+	//TODO: #define registers values
+	if( ( (read_reg(BQ_SYS_CTRL1) & 0x10) == 0x00) || (read_reg(BQ_SYS_CTRL2) == 0x00) ) {	//ADC_EN '1' in normal mode
+		// enable ADC and thermistors
+		error |= write_reg(BQ_SYS_CTRL1, (ADC_EN | TEMP_SEL));
 
-			// enable ADC and thermistors
-			error |= write_reg(BQ_SYS_CTRL1, (ADC_EN | TEMP_SEL));
-		
-			// write 0x19 to CC_CFG according to datasheet page 39
-			error |= write_reg(BQ_CC_CFG, 0x19);
-		
-			//OverVoltage threshold
-			error |= write_reg(BQ_OV_TRIP, tripVoltage(4.2));
-			error |= write_reg(BQ_PROTECT3, BQ_OV_DELAY_1s);
-			//UnderVoltage threshold
-			error |= write_reg(BQ_UV_TRIP, tripVoltage(2.80));
-			error |= write_reg(BQ_PROTECT3, BQ_UV_DELAY_4s);
+		// write 0x19 to CC_CFG according to datasheet page 39
+		error |= write_reg(BQ_CC_CFG, 0x19);
 
-			// Overcurrent protection
-			error |= write_reg(BQ_PROTECT2, (CURRENT_16A | BQ_OCP_8ms ));
-			// Short Circuit Protection
-			//You can set the shortcircuit protection with ...
-			//The delay time could be 70us, 100us, 200us or 400 us
-			error |= write_reg(BQ_PROTECT1, (CURRENT_44A | BQ_SCP_70us ));
+		//OverVoltage threshold
+		error |= write_reg(BQ_OV_TRIP, tripVoltage(HW_MAX_CELL));
+		error |= write_reg(BQ_PROTECT3, BQ_OV_DELAY_1s);
+		//UnderVoltage threshold
+		error |= write_reg(BQ_UV_TRIP, tripVoltage(HW_MIN_CELL));
+		error |= write_reg(BQ_PROTECT3, BQ_UV_DELAY_4s);
 
-			// clear SYS-STAT for init
-			write_reg(BQ_SYS_STAT,0xFF);
+		// Overcurrent protection
+		error |= write_reg(BQ_PROTECT2, (CURRENT_16A | BQ_OCP_8ms ));
+		// Short Circuit Protection
+		//You can set the shortcircuit protection with ...
+		//The delay time could be 70us, 100us, 200us or 400 us
+		error |= write_reg(BQ_PROTECT1, (CURRENT_44A | BQ_SCP_70us ));
 
-			// enable countinous reading of the Coulomb Counter
-			error |= write_reg(BQ_SYS_CTRL2, CC_EN);	// sets ALERT at 250ms interval
+		// clear SYS-STAT for init
+		write_reg(BQ_SYS_STAT,0xFF);
 
-			chThdSleepMilliseconds(10);
-			write_reg(BQ_SYS_STAT,0xFF);
-			chThdSleepMilliseconds(10);
+		// enable countinous reading of the Coulomb Counter
+		error |= write_reg(BQ_SYS_CTRL2, CC_EN);	// sets ALERT at 250ms interval
 
-			//Connect the pack
-			bq_connect_pack(true);
-		
-			// Mark the AFE as initialized for the next post-sleep resets
-			if (error == 0) {
-				bq76940->initialized = true;
-			} else {
-				bq76940->initialized = false;
-			}
+		chThdSleepMilliseconds(10);
+		write_reg(BQ_SYS_STAT,0xFF);
+		chThdSleepMilliseconds(10);
+
+		//Connect the pack
+		bq_connect_pack(true);
+
+		// Mark the AFE as initialized for the next post-sleep resets
+		if (error == 0) {
+			bq76940->initialized = true;
+		} else {
+			bq76940->initialized = false;
 		}
+
 	}
 
 	chThdCreateStatic(sample_thread_wa, sizeof(sample_thread_wa), NORMALPRIO +2 , sample_thread, NULL);
@@ -305,24 +303,19 @@ static THD_FUNCTION(sample_thread, arg) {
 
 		while( !palReadPad(GPIOA,2U) ){
 
-			if( afe_pool_count > 10 ) {// if code reach here, the AFE is not active
+			if( afe_pool_count > 20 ) {// if code reach here, the AFE is not active
 				write_reg(BQ_SYS_STAT,0xFF);
 				bms_if_fault_report(FAULT_CODE_NON_RESPONSE_AFE);
-
+				afe_pool_count = 0;
 				// reinit bq76940
-				bq76940->initialized = false;// the afe will re init in the next wake up
-				if( bq76940->re_init_retry > 3 ) {
-					bq76940->re_init_retry = 0;
-					bq_shutdown_bq76940();
-				}
+				bq76940_init();
 
 				while( 1 ) {chThdSleepMilliseconds(1000);}// loop here and wait for WD for restart
 			}
 			timeout_feed_WDT(THREAD_AFE);
-			chThdSleepMilliseconds(30);
+			chThdSleepMilliseconds(25);
 			afe_pool_count++;
 		}
-
 		bq76940_Alert_handler();
 		chThdSleepMilliseconds(1);
 		//check AFE response

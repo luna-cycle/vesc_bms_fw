@@ -168,6 +168,22 @@
 #ifndef HW_CHARGER_DETECTION
 #define HW_CHARGER_DETECTION()	1		//if no charger detecion is implemented assume that charger is always present
 #endif
+
+#ifndef HW_MIN_CELL
+#define HW_MIN_CELL				2.8		//min cell voltage [V]
+#endif
+
+#ifndef HW_HYSTEREIS_MIN_CELL
+#define HW_HYSTEREIS_MIN_CELL	0.05	//min cell hysteresis to clear undervoltage [V]
+#endif
+
+#ifndef HW_MAX_CELL
+#define HW_MAX_CELL				4.25	//max cell voltage [V]
+#endif
+
+#ifndef HW_HYSTEREIS_MAX_CELL
+#define HW_HYSTEREIS_MAX_CELL	0.05	//max cell hysteresis to clear undervoltage [V]
+#endif
 // Functions
 uint8_t hw_id_from_uuid(void);
 
