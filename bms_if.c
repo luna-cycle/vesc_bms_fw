@@ -227,7 +227,7 @@ static THD_FUNCTION(charge_discharge_thd,p){
 		// check and clear faults
 
 		//check mcu V regulator temp
-		if ( bms_if_get_vreg_temp() > HW_MAX_VREG_TEMP ) {
+		if ( bms_if_get_vreg_temp() > HW_MAX_VREG_TEMP && !flag_temp_Vreg_fault) {
 			bms_if_fault_report(FAULT_CODE_VREG_OVERTEMP);
 			flag_temp_Vreg_fault = 1;
 			allow_temp_Vreg_fault_clear = 0;
@@ -244,7 +244,7 @@ static THD_FUNCTION(charge_discharge_thd,p){
 			balance_prev_state_temp = backup.config.balance_mode; // store previous balance mode
 			backup.config.balance_mode = BALANCE_MODE_DISABLED; // force disable balance until the temp is acceptable
 		} else {
-			if(allow_ut_cell_fault_clear){
+			if( allow_ut_cell_fault_clear ) {
 				if( flag_temp_UT_cell_fault ) {
 					backup.config.balance_mode = balance_prev_state_temp;// restore balance mode if fault is cleared
 				}
@@ -260,7 +260,7 @@ static THD_FUNCTION(charge_discharge_thd,p){
 			balance_prev_state_temp = backup.config.balance_mode; // store previous balance mode
 			backup.config.balance_mode = BALANCE_MODE_DISABLED; // force disable balance until the temp is acceptable
 		} else {
-			if(allow_ot_cell_fault_clear){
+			if( allow_ot_cell_fault_clear ) {
 				if( flag_temp_OT_cell_fault ) {
 					backup.config.balance_mode = balance_prev_state_temp;// restore balance mode if fault is cleared
 				}
@@ -286,7 +286,8 @@ static THD_FUNCTION(charge_discharge_thd,p){
 		}
 
 		//check over current charge
-		if ( HW_GET_I_IN() > backup.config.max_charge_current ) {
+		if ( HW_GET_I_IN() > backup.config.max_charge_current && !flag_I_charge_fault ) {
+			bms_if_fault_report(FAULT_CODE_CHARGE_OVERCURRENT);
 			flag_I_charge_fault = 1;
 		} else {
 			flag_I_charge_fault = 0;
@@ -294,21 +295,23 @@ static THD_FUNCTION(charge_discharge_thd,p){
 		}
 
 		// check short circuit discharge
-		if ( HW_SC_OC_DETECTED() ) {
+		if ( HW_SC_OC_DETECTED() && !flag_SC_discharge_fault ) {
+			bms_if_fault_report(FAULT_CODE_DISCHARGE_OVERCURRENT);
 			flag_SC_discharge_fault = 1;
 		} else {
 			flag_SC_discharge_fault = 0;
 		}
 
 		// check over current discharge
-		if ( HW_SC_OC_DETECTED() ) {
+		if ( HW_SC_OC_DETECTED() && !flag_OC_discharge_fault) {
+			bms_if_fault_report(FAULT_CODE_DISCHARGE_SHORT_CIRCUIT);
 			flag_OC_discharge_fault = 1;
 		} else {
 			flag_OC_discharge_fault = 0;
 		}
 
 		//check cell under voltage
-		if ( HW_UV_DETECTED() ) {
+		if ( HW_UV_DETECTED() && !flag_UV_fault ) {
 			bms_if_fault_report(FAULT_CODE_CELL_UNDERVOLTAGE);
 			flag_UV_fault = 1;
 		} else {
@@ -321,9 +324,7 @@ static THD_FUNCTION(charge_discharge_thd,p){
 			balance_prev_state = backup.config.balance_mode; // store previous balance mode
 			backup.config.balance_mode = BALANCE_MODE_ALWAYS; // force balance
 			flag_OV_fault = 1;
-		}
-
-		if ( !HW_OV_DETECTED() ){
+		} else {
 			if( flag_OV_fault ) {// if there was a fault, the balance mode was changed to always, must be restored
 				backup.config.balance_mode = balance_prev_state;// restore balance mode if fault is cleared
 			}
