@@ -156,7 +156,7 @@ uint8_t bq76940_init(void) {
 	// if we want to change the AFE configuration we have to reset it to default values and then it will be
 	// rećonfigured on the next MCU reset.
 	//TODO: #define registers values
-	if( ( (read_reg(BQ_SYS_CTRL1) & 0x10) == 0x00) || (read_reg(BQ_SYS_CTRL2) == 0x00) ) {	//ADC_EN '1' in normal mode
+	if( ( (read_reg(BQ_SYS_CTRL1) & ADC_EN) == 0x00) || (read_reg(BQ_SYS_CTRL2) == 0x00) ) {	//ADC_EN '1' in normal mode
 		// enable ADC and thermistors
 		error |= write_reg(BQ_SYS_CTRL1, (ADC_EN | TEMP_SEL));
 
