@@ -35,52 +35,52 @@ void hw_luna_init(void){
 }
 
 float hw_luna_get_cell_temp_max(void) {
-    float temp_max = -100.0;
-    
-    for(int i = 0; i<4 ;i++) {
-        float temp = hw_luna_get_temp(i);
-        if(temp > temp_max) {
-            temp_max = temp;
-        }
-    }
-    return temp_max;
+	float temp_max = -100.0;
+
+	for(int i = 0; i<4 ;i++) {
+		float temp = hw_luna_get_temp(i);
+		if(temp > temp_max) {
+			temp_max = temp;
+		}
+	}
+	return temp_max;
 }
 
 float hw_luna_get_cell_temp_min(void) {
-    float temp_min = 200.0;
+	float temp_min = 200.0;
 
-    for(int i = 0; i<4 ;i++) {
-        float temp = hw_luna_get_temp(i);
-        if(temp < temp_min) {
-            temp_min = temp;
-        }
-    }
-    return temp_min;
+	for(int i = 0; i<4 ;i++) {
+		float temp = hw_luna_get_temp(i);
+		if(temp < temp_min) {
+			temp_min = temp;
+		}
+	}
+	return temp_min;
 }
 
 float hw_luna_get_temp(int sensors){
 // hardware has 8 temperature sensors (plus internal AFE sensor):
 // T[0]: cell temperature TC1
-/// T[1]: cell temperature TC2
+// T[1]: cell temperature TC2
 // T[2]: cell temperature TC3
 // T[3]: cell temperature TC4
 // T[4]: Negative Connector terminal temperature
 // T[5]: Positive Connector terminal temperature
 // T[6]: MOSFET temperature
 // T[7]: Linear Voltage regulator temperature
-    
-    float temp = -1;
 
-    if(sensors <= 6) {
-        // temperatures measured by the MCU ADC
-        temp = pwr_get_temp(sensors);
-    } else {
-        if(sensors == 7) {
-            // temperature measured by the AFE ADC
-            temp = bq_get_temp(2);  //Linear reg temp
-        }
-    }
-    return temp;
+	float temp = -1;
+
+	if(sensors <= 6) {
+		// temperatures measured by the MCU ADC
+		temp = pwr_get_temp(sensors);
+	} else {
+		if(sensors == 7) {
+			// temperature measured by the AFE ADC
+			temp = bq_get_temp(2);  //Linear reg temp
+			}
+	}
+	return temp;
 }
 //return the highest temp between the internal sensor of AFE and pre regulator
 float hw_luna_get_bal_temp (void)
@@ -95,7 +95,7 @@ float hw_luna_get_bal_temp (void)
 	else
 		return reg_temp;
 }
-    
+
 static void terminal_cmd_shipmode(int argc, const char **argv) {
 	(void)argc;
 	(void)argv;
@@ -109,9 +109,9 @@ static void terminal_cmd_connect(int argc, const char **argv) {
 	(void)argc;
 	(void)argv;
 
-    bq_discharge_enable();
-    bq_charge_enable();
-    
+	bq_discharge_enable();
+	bq_charge_enable();
+
 	return;
 }
 
