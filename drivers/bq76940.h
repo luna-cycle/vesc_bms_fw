@@ -190,4 +190,6 @@ bool bq_ov_detected(void);
 void bq_restore_ov_fault(void);
 void bq_restore_uv_fault(void);
 void bq_connect_only_charger (bool);
+bool bq_oc_detected(void);
+bool bq_sc_detected(void);
 #endif /* BQ76940_H_ */

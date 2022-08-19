@@ -66,7 +66,8 @@ typedef struct {
 	bool request_connection_pack;
 	fault_data fault;
 	bool is_load_present;
-	bool oc_sc_detected;
+	bool oc_detected;
+	bool sc_detected;
 	bool UV_detected;
 	bool OV_detected;
 	bool connect_only_charger;
@@ -219,29 +220,29 @@ void bq76940_Alert_handler(void) {
 	}
 
 	if ( sys_stat & SYS_STAT_UV ) {
-		bms_if_fault_report(FAULT_CODE_CELL_UNDERVOLTAGE);
+		//bms_if_fault_report(FAULT_CODE_CELL_UNDERVOLTAGE);
 		bq76940->UV_detected = true;
 
 	}
 
 	if ( sys_stat & SYS_STAT_OV ) {
-		bms_if_fault_report(FAULT_CODE_CELL_OVERVOLTAGE);
+		//bms_if_fault_report(FAULT_CODE_CELL_OVERVOLTAGE);
 		bq76940->OV_detected = true;
 
 	}
 
 	if ( sys_stat & SYS_STAT_SCD ) {
-		bms_if_fault_report(FAULT_CODE_DISCHARGE_SHORT_CIRCUIT);
-		bq76940->oc_sc_detected =  true;
+		//bms_if_fault_report(FAULT_CODE_DISCHARGE_SHORT_CIRCUIT);
+		bq76940->oc_detected =  true;
 	}
 
 	if ( sys_stat & SYS_STAT_OCD ) {
-		bms_if_fault_report(FAULT_CODE_DISCHARGE_OVERCURRENT);
-		bq76940->oc_sc_detected =  true;
+		//bms_if_fault_report(FAULT_CODE_DISCHARGE_OVERCURRENT);
+		bq76940->sc_detected =  true;
 	}
 
 	if( bq76940->initialized == false ) {
-		bms_if_fault_report(FAULT_CODE_DONT_INIT_AFE);
+		//bms_if_fault_report(FAULT_CODE_DONT_INIT_AFE);
 		//bq76940->request_connection_pack = false;
 	}
 	// Clear Status Register. This will clear the Alert pin so its ready
@@ -305,7 +306,7 @@ static THD_FUNCTION(sample_thread, arg) {
 
 			if( afe_pool_count > 20 ) {// if code reach here, the AFE is not active
 				write_reg(BQ_SYS_STAT,0xFF);
-				bms_if_fault_report(FAULT_CODE_NON_RESPONSE_AFE);
+				bms_if_fault_report(FAULT_CODE_DONT_INIT_AFE);
 				afe_pool_count = 0;
 				// reinit bq76940
 				bq76940_init();
@@ -613,12 +614,17 @@ bool bq_get_load_status(void) {
 	return bq76940->is_load_present;
 }
 
-bool bq_oc_sc_detected (void) {
-	return bq76940->oc_sc_detected;
+bool bq_oc_detected (void) {
+	return bq76940->oc_detected;
+}
+
+bool bq_sc_detected (void) {
+	return bq76940->sc_detected;
 }
 
 void bq_restore_oc_sc_fail() {
-	bq76940->oc_sc_detected = false;
+	bq76940->oc_detected = false;
+	bq76940->sc_detected = false;
 }
 
 bool bq_ov_detected(void) {

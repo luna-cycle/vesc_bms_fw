@@ -227,7 +227,7 @@ static THD_FUNCTION(charge_discharge_thd,p){
 		// check and clear faults
 
 		//check mcu V regulator temp
-		if ( bms_if_get_vreg_temp() > HW_MAX_VREG_TEMP && !flag_temp_Vreg_fault) {
+		if ( (bms_if_get_vreg_temp() > HW_MAX_VREG_TEMP) && (flag_temp_Vreg_fault == 0)) {
 			bms_if_fault_report(FAULT_CODE_VREG_OVERTEMP);
 			flag_temp_Vreg_fault = 1;
 			allow_temp_Vreg_fault_clear = 0;
@@ -237,7 +237,7 @@ static THD_FUNCTION(charge_discharge_thd,p){
 			}
 		}
 
-		if ( HW_TEMP_CELLS_MIN() <= backup.config.t_charge_min && backup.config.t_charge_mon_en && !flag_temp_UT_cell_fault) {
+		if ( (HW_TEMP_CELLS_MIN() <= backup.config.t_charge_min && backup.config.t_charge_mon_en) && (flag_temp_UT_cell_fault == 0)) {
 			bms_if_fault_report(FAULT_CODE_CELL_UNDERTEMP);
 			flag_temp_UT_cell_fault = 1;
 			allow_ut_cell_fault_clear = 0;
@@ -253,7 +253,7 @@ static THD_FUNCTION(charge_discharge_thd,p){
 			}
 		}
 
-		if ( HW_TEMP_CELLS_MAX() >= backup.config.t_charge_max && backup.config.t_charge_mon_en && !flag_temp_OT_cell_fault) {
+		if ( (HW_TEMP_CELLS_MAX() >= backup.config.t_charge_max && backup.config.t_charge_mon_en) && (flag_temp_OT_cell_fault == 0)) {
 			bms_if_fault_report(FAULT_CODE_CELL_OVERTEMP);
 			flag_temp_OT_cell_fault = 1;
 			allow_ot_cell_fault_clear = 0;
@@ -269,8 +269,8 @@ static THD_FUNCTION(charge_discharge_thd,p){
 		}
 
 		//check hardware temp
-		if ( ((bms_if_get_temp_ic() > HW_MAX_TEMP_IC) || (bms_if_get_temp_mosfet() > HW_MAX_MOSFET_TEMP )
-		|| (bms_if_get_connector_temp() > HW_MAX_CONNECTOR_TEMP)) && !flag_temp_hardware_fault){
+		if ( (((bms_if_get_temp_ic() > HW_MAX_TEMP_IC) || (bms_if_get_temp_mosfet() > HW_MAX_MOSFET_TEMP )
+		|| (bms_if_get_connector_temp() > HW_MAX_CONNECTOR_TEMP))) && (flag_temp_hardware_fault == 0)){
 			bms_if_fault_report(FAULT_CODE_HARDWARE_OVERTEMP);
 			flag_temp_hardware_fault = 1;
 			allow_temp_hw_fault_clear = 0;
@@ -286,7 +286,7 @@ static THD_FUNCTION(charge_discharge_thd,p){
 		}
 
 		//check over current charge
-		if ( HW_GET_I_IN() > backup.config.max_charge_current && !flag_I_charge_fault ) {
+		if ( (HW_GET_I_IN() > backup.config.max_charge_current) && (flag_I_charge_fault == 0) ) {
 			bms_if_fault_report(FAULT_CODE_CHARGE_OVERCURRENT);
 			flag_I_charge_fault = 1;
 		} else {
@@ -295,7 +295,7 @@ static THD_FUNCTION(charge_discharge_thd,p){
 		}
 
 		// check short circuit discharge
-		if ( HW_SC_OC_DETECTED() && !flag_SC_discharge_fault ) {
+		if ( HW_OC_DETECTED() && (flag_OC_discharge_fault == 0) ) {
 			bms_if_fault_report(FAULT_CODE_DISCHARGE_OVERCURRENT);
 			flag_SC_discharge_fault = 1;
 		} else {
@@ -303,7 +303,7 @@ static THD_FUNCTION(charge_discharge_thd,p){
 		}
 
 		// check over current discharge
-		if ( HW_SC_OC_DETECTED() && !flag_OC_discharge_fault) {
+		if ( HW_SC_DETECTED() && (flag_SC_discharge_fault == 0)) {
 			bms_if_fault_report(FAULT_CODE_DISCHARGE_SHORT_CIRCUIT);
 			flag_OC_discharge_fault = 1;
 		} else {
@@ -311,7 +311,7 @@ static THD_FUNCTION(charge_discharge_thd,p){
 		}
 
 		//check cell under voltage
-		if ( HW_UV_DETECTED() && !flag_UV_fault ) {
+		if ( HW_UV_DETECTED() && (flag_UV_fault == 0) ) {
 			bms_if_fault_report(FAULT_CODE_CELL_UNDERVOLTAGE);
 			flag_UV_fault = 1;
 		} else {
@@ -319,7 +319,7 @@ static THD_FUNCTION(charge_discharge_thd,p){
 		}
 
 		//check cell over voltage
-		if ( HW_OV_DETECTED() && !flag_OV_fault ) {
+		if ( HW_OV_DETECTED() && (flag_OV_fault == 0) ) {
 			bms_if_fault_report(FAULT_CODE_CELL_OVERVOLTAGE);
 			balance_prev_state = backup.config.balance_mode; // store previous balance mode
 			backup.config.balance_mode = BALANCE_MODE_ALWAYS; // force balance
@@ -479,7 +479,7 @@ static THD_FUNCTION(charge_discharge_thd,p){
 							flag_OC_discharge_fault = 0;
 							flag_SC_discharge_fault = 0;
 							HW_SC_OC_RESTORE();
-							} else {
+						} else {
 							//wait for reconnection timeout
 							for ( oc_sc_timeout = (RECONNECTION_TIMEOUT * 10) ; oc_sc_timeout > 0 ; oc_sc_timeout-- ) {
 								chThdSleepMilliseconds(100);
