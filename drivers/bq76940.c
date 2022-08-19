@@ -320,11 +320,11 @@ static THD_FUNCTION(sample_thread, arg) {
 		bq76940_Alert_handler();
 		chThdSleepMilliseconds(1);
 		//check AFE response
-		if( palReadPad(GPIOA,2U) ) {
-			timeout_feed_WDT(THREAD_AFE);
-			bms_if_fault_report(FAULT_CODE_NON_RESPONSE_AFE);
-			write_reg(BQ_SYS_STAT,0xFF);//for future hard rev a hardware reset can be implemented
-		}
+//		if( palReadPad(GPIOA,2U) ) {
+//			timeout_feed_WDT(THREAD_AFE);
+//			bms_if_fault_report(FAULT_CODE_NON_RESPONSE_AFE);
+//			write_reg(BQ_SYS_STAT,0xFF);//for future hard rev a hardware reset can be implemented
+//		}
 
 	}
 }
