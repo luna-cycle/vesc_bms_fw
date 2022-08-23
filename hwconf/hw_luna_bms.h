@@ -73,8 +73,8 @@
 #define HW_LOAD_DETECTION()			bq_get_load_status()
 #define HW_CHARGER_DETECTION()		1
 #define HW_PACK_CONN_ONLY_CHARGE(request)	bq_connect_only_charger(request)
-#define HW_SC_DETECTED()			bq_oc_detected()
-#define HW_OC_DETECTED()			bq_sc_detected()
+#define HW_SC_DETECTED()			bq_sc_detected()
+#define HW_OC_DETECTED()			bq_oc_detected()
 #define HW_SC_OC_RESTORE()			bq_restore_oc_sc_fail()
 #define HW_OV_DETECTED()			bq_ov_detected()
 #define HW_UV_DETECTED()			bq_uv_detected()
@@ -89,9 +89,10 @@
 #define R_CHARGE_TOP			(520e3 + 2.5e3 + 100.0)
 #define R_CHARGE_BOTTOM			(10e3)
 #define AFE						bq76940
-
+#define WOLF_REV3
 // Define the current with the shunt resistor value
 #define HW_SHUNT_RES			(0.0005)
+
 //More abstraction to setup the threshold shortcircuit current
 //Only if only the resistor shunt is 0.5mOhm
 #define CURRENT_44A		BQ_SCP_22mV
@@ -226,5 +227,4 @@ float hw_luna_get_cell_temp_max(void);
 float hw_luna_get_cell_temp_min(void);
 float hw_luna_get_bal_temp (void);
 float hw_luna_get_connector_temp(void);
-
 #endif /* HWCONF_HW_LUNA_BMS_H_ */

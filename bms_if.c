@@ -295,16 +295,16 @@ static THD_FUNCTION(charge_discharge_thd,p){
 		}
 
 		// check short circuit discharge
-		if ( HW_OC_DETECTED() && (flag_OC_discharge_fault == 0) ) {
-			bms_if_fault_report(FAULT_CODE_DISCHARGE_OVERCURRENT);
+		if ( HW_SC_DETECTED() && (flag_SC_discharge_fault == 0) ) {
+			bms_if_fault_report(FAULT_CODE_DISCHARGE_SHORT_CIRCUIT);
 			flag_SC_discharge_fault = 1;
 		} else {
 			flag_SC_discharge_fault = 0;
 		}
 
 		// check over current discharge
-		if ( HW_SC_DETECTED() && (flag_SC_discharge_fault == 0)) {
-			bms_if_fault_report(FAULT_CODE_DISCHARGE_SHORT_CIRCUIT);
+		if ( HW_OC_DETECTED() && (flag_OC_discharge_fault == 0)) {
+			bms_if_fault_report(FAULT_CODE_DISCHARGE_OVERCURRENT);
 			flag_OC_discharge_fault = 1;
 		} else {
 			flag_OC_discharge_fault = 0;
@@ -446,7 +446,7 @@ static THD_FUNCTION(charge_discharge_thd,p){
 					break;
 
 					case FAULT_CODE_CHARGE_OVERCURRENT: // charge over current or short circuit
-						HW_PACK_DISCONNECT(); // disconnect pack and wait for reconnection time out
+						HW_PACK_DISCONNECT(); // disconnect pack and wait for reconnection time out, at this point the AFE should have disconnected the pack, this is redundant
 						if ( oc_charge_count_attempt >= MAX_RECONNECT_ATTEMPT ) {
 							while ( !HW_CHARGER_DETECTED() ) {	// if max attempt reached, wait for charger removal. Is considered a
 								sleep_reset();					// critical fault so bms must be stay here until charged
@@ -461,13 +461,14 @@ static THD_FUNCTION(charge_discharge_thd,p){
 								chThdSleepMilliseconds(100);
 								sleep_reset();
 							}
+
 							HW_PACK_CONNECT();
 							oc_charge_count_attempt++;
 						}
 					break;
 
 					case FAULT_CODE_DISCHARGE_OVERCURRENT:
-						HW_PACK_DISCONNECT(); // disconnect pack and wait for reconnection time out
+						HW_PACK_DISCONNECT(); // disconnect pack and wait for reconnection time out, at this point the AFE should have disconnected the pack, this is redundant
 						if ( oc_sc_count_attempt >= MAX_RECONNECT_ATTEMPT ) {
 																// wait for the current to ramp down
 							while(HW_LOAD_DETECTION()){			// if max attempt reached, wait for load removal. Is considered a
@@ -528,7 +529,7 @@ static THD_FUNCTION(charge_discharge_thd,p){
 					break;
 
 					case FAULT_CODE_CELL_OVERVOLTAGE:
-						HW_PACK_DISCONNECT();
+						HW_PACK_DISCONNECT();//at this point the AFE should have disconnected the pack, this is redundant
 						float v_max_aux = 0.0;
 						float cell_max = 0;
 						// acquire max cell

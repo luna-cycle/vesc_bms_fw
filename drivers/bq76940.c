@@ -213,37 +213,41 @@ void bq76940_Alert_handler(void) {
 	// Report fault codes
 	if ( sys_stat & SYS_STAT_DEVICE_XREADY ) {
 		//handle error
+		bq76940->request_connection_pack = false;
 	}
 
 	if ( sys_stat & SYS_STAT_OVRD_ALERT ) {
 		//handle error
+		bq76940->request_connection_pack = false;
 	}
 
 	if ( sys_stat & SYS_STAT_UV ) {
 		//bms_if_fault_report(FAULT_CODE_CELL_UNDERVOLTAGE);
 		bq76940->UV_detected = true;
-
+		bq76940->request_connection_pack = false;
 	}
 
 	if ( sys_stat & SYS_STAT_OV ) {
 		//bms_if_fault_report(FAULT_CODE_CELL_OVERVOLTAGE);
 		bq76940->OV_detected = true;
-
+		bq76940->request_connection_pack = false;
 	}
 
 	if ( sys_stat & SYS_STAT_SCD ) {
 		//bms_if_fault_report(FAULT_CODE_DISCHARGE_SHORT_CIRCUIT);
-		bq76940->oc_detected =  true;
+		bq76940->sc_detected =  true;
+		bq76940->request_connection_pack = false;
 	}
 
 	if ( sys_stat & SYS_STAT_OCD ) {
 		//bms_if_fault_report(FAULT_CODE_DISCHARGE_OVERCURRENT);
-		bq76940->sc_detected =  true;
+		bq76940->oc_detected =  true;
+		bq76940->request_connection_pack = false;
 	}
 
 	if( bq76940->initialized == false ) {
 		//bms_if_fault_report(FAULT_CODE_DONT_INIT_AFE);
-		//bq76940->request_connection_pack = false;
+		bq76940->request_connection_pack = false;
 	}
 	// Clear Status Register. This will clear the Alert pin so its ready
 	// for the next event in 250ms
@@ -318,7 +322,7 @@ static THD_FUNCTION(sample_thread, arg) {
 			afe_pool_count++;
 		}
 		bq76940_Alert_handler();
-		chThdSleepMilliseconds(1);
+		chThdSleepMilliseconds(50);
 		//check AFE response
 //		if( palReadPad(GPIOA,2U) ) {
 //			timeout_feed_WDT(THREAD_AFE);

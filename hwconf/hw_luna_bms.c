@@ -32,6 +32,7 @@ void hw_luna_init(void){
 	HW_CAN_ON();
 	terminal_register_command_callback("shipmode", "Shipmode = turn off bq 76940", 0, terminal_cmd_shipmode);	
 	terminal_register_command_callback("Connect", "Connect=turn on big mosfets", 0, terminal_cmd_connect);
+
 }
 
 float hw_luna_get_cell_temp_max(void) {
@@ -126,4 +127,3 @@ float hw_luna_get_connector_temp(){// return the higest temperature between conn
 
 	return temp_aux;
 }
-
