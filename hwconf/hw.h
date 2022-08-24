@@ -178,7 +178,7 @@
 #endif
 
 #ifndef HW_MAX_CELL
-#define HW_MAX_CELL				4.25	//max cell voltage [V]
+#define HW_MAX_CELL				4.2	//max cell voltage [V]
 #endif
 
 #ifndef HW_HYSTEREIS_MAX_CELL

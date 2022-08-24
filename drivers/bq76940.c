@@ -295,7 +295,6 @@ void bq76940_Alert_handler(void) {
 }
 
 uint16_t afe_pool_count = 0;
-bool AFE_FAULT_FLAG = FALSE;
 static THD_FUNCTION(sample_thread, arg) {
 	(void)arg;
 	chRegSetThreadName("BQ76940");
@@ -303,7 +302,6 @@ static THD_FUNCTION(sample_thread, arg) {
 	while ( !chThdShouldTerminateX() ) {
 
 		m_i2c.has_error = 0;
-		AFE_FAULT_FLAG = FALSE;
 		afe_pool_count = 0;
 
 		while( !palReadPad(GPIOA,2U) ){
@@ -322,13 +320,6 @@ static THD_FUNCTION(sample_thread, arg) {
 			afe_pool_count++;
 		}
 		bq76940_Alert_handler();
-		chThdSleepMilliseconds(50);
-		//check AFE response
-//		if( palReadPad(GPIOA,2U) ) {
-//			timeout_feed_WDT(THREAD_AFE);
-//			bms_if_fault_report(FAULT_CODE_NON_RESPONSE_AFE);
-//			write_reg(BQ_SYS_STAT,0xFF);//for future hard rev a hardware reset can be implemented
-//		}
 
 	}
 }

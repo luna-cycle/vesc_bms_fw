@@ -33,10 +33,10 @@
 #define USE_AFE_WD
 #define HW_BIDIRECTIONAL_SWITCH
 
-#define HW_MAX_TEMP_IC 			65.0	// AFE temp [°C]
-#define HW_MAX_MOSFET_TEMP		65.0	// MOSFET TEMP [°C]
-#define HW_MAX_CONNECTOR_TEMP	65.0	// power connectors and regulator max temp [°C]
-#define HW_MAX_VREG_TEMP 		65.0	// max pre regulator temp [°C]
+#define HW_MAX_TEMP_IC 			75.0	// AFE temp [°C]
+#define HW_MAX_MOSFET_TEMP		75.0	// MOSFET TEMP [°C]
+#define HW_MAX_CONNECTOR_TEMP	75.0	// power connectors and regulator max temp [°C]
+#define HW_MAX_VREG_TEMP 		95.0	// max pre regulator temp [°C]
 #define HW_MAX_SC_DISCHARGE_I	44.0	// short circuit current [A]
 #define HW_MAX_OC_DISCHARGE_I	16.0	// overcurrent current [A]
 #define HW_HYSTERESIS_TEMP		5.0		// hysteresis to avoid reconnecto on temp fault [°C]
@@ -44,7 +44,7 @@
 #define RECONNECTION_TIMEOUT	3		// seconds to wait before reconnection attempt
 #define HW_MIN_CELL				2.8		//min cell voltage [V]
 #define HW_HYSTEREIS_MIN_CELL	0.05	//min cell hysteresis to clear undervoltage [V]
-#define HW_MAX_CELL				4.25	//max cell voltage [V]
+#define HW_MAX_CELL				4.2		//max cell voltage [V]
 #define HW_HYSTEREIS_MAX_CELL	0.05	//max cell hysteresis to clear undervoltage [V]
 
 // Macros
