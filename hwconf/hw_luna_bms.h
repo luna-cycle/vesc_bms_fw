@@ -80,6 +80,7 @@
 #define HW_UV_DETECTED()			bq_uv_detected()
 #define HW_OV_RESTORE_FAULT()		bq_restore_ov_fault()
 #define HW_UV_RESTORE_FAULT() 		bq_restore_uv_fault()
+#define HW_WAIT_AFE()				bq_semaphore()
 
 // Settings
 #define HW_ADC_TEMP_SENSORS		8

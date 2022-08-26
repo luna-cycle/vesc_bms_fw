@@ -202,9 +202,9 @@ static THD_FUNCTION(charge_discharge_thd,p){
 	chRegSetThreadName("Charge_Discharge");
 	balance_prev_state = backup.config.balance_mode; // store initial balance mode
 	balance_prev_state_temp = backup.config.balance_mode;
-
+	chThdSleepMilliseconds(100);// time to acquire ADCs
 	for (;;) {
-		chThdSleepMilliseconds(100);// time to acquire ADCs
+		HW_WAIT_AFE();
 		// check can status
 		bms_soc_soh_temp_stat *msg;
 		bool chg_can_ok = true;
@@ -385,7 +385,7 @@ static THD_FUNCTION(charge_discharge_thd,p){
 		if ( (HW_GET_I_IN() > 0.03) && (FAULT_CODE == FAULT_CODE_NONE) ) {// incoming current, pack is charging
 			BMS_state = BMS_CHARGING;
 		} else {
-			if ( (HW_GET_I_IN()) < -0.03 && (FAULT_CODE == FAULT_CODE_NONE) ) { // out going current, pack is dischargin
+			if ( (HW_GET_I_IN() < -0.03) && (FAULT_CODE == FAULT_CODE_NONE) ) { // out going current, pack is dischargin
 				BMS_state = BMS_DISCHARGIN;
 			} else {
 				if ( FAULT_CODE != FAULT_CODE_NONE ) {
@@ -541,6 +541,11 @@ static THD_FUNCTION(charge_discharge_thd,p){
 
 					case FAULT_CODE_CELL_OVERVOLTAGE:
 						HW_PACK_DISCONNECT();//at this point the AFE should have disconnected the pack, this is redundant
+						//wait before measure the cells
+						for ( timeout = (RECONNECTION_TIMEOUT * 10) ; timeout > 0 ; timeout-- ) {
+							chThdSleepMilliseconds(100);
+							sleep_reset();
+						}
 						float v_max_aux = 0.0;
 						float cell_max = 0;
 						// acquire max cell
@@ -551,11 +556,6 @@ static THD_FUNCTION(charge_discharge_thd,p){
 						}
 						cell_max = v_max_aux;
 						if(cell_max < ( HW_MAX_CELL - HW_HYSTEREIS_MAX_CELL) ){
-							//wait for reconnection timeout
-							for ( timeout = (RECONNECTION_TIMEOUT * 100) ; timeout > 0 ; timeout-- ) {
-								chThdSleepMilliseconds(10);
-								sleep_reset();
-							}
 							HW_OV_RESTORE_FAULT();
 							allow_OV_fault_clear = 1;
 						}

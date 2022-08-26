@@ -184,6 +184,10 @@
 #ifndef HW_HYSTEREIS_MAX_CELL
 #define HW_HYSTEREIS_MAX_CELL	0.05	//max cell hysteresis to clear undervoltage [V]
 #endif
+
+#ifndef HW_WAIT_AFE
+#define HW_WAIT_AFE() 			__NOP();//null
+#endif
 // Functions
 uint8_t hw_id_from_uuid(void);
 

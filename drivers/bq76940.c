@@ -31,6 +31,7 @@
 #include "conf_general.h"
 #include "chbsem.h"
 #include "ch.h"
+#include "chtime.h"
 #ifdef HW_HAS_BQ76940
 
 #define MAX_CELL_NUM		15
@@ -110,6 +111,7 @@ void bq_balance_cells(volatile bool *m_discharge_state);
 uint8_t tripVoltage(float voltage);
 void bq_disconnect_battery(bool disconnect);
 bool status_load_present(void);
+binary_semaphore_t bq_alert_semph;
 //Macros
 #define READ_ALERT()	palReadPad(BQ76940_ALERT_GPIO, BQ76940_ALERT_PIN)
 
@@ -172,11 +174,11 @@ uint8_t bq76940_init(void) {
 		error |= write_reg(BQ_PROTECT3, BQ_UV_DELAY_4s);
 
 		// Overcurrent protection
-		error |= write_reg(BQ_PROTECT2, (CURRENT_16A | BQ_OCP_8ms ));
+		error |= write_reg(BQ_PROTECT2, (CURRENT_72A | BQ_OCP_640ms ));
 		// Short Circuit Protection
 		//You can set the shortcircuit protection with ...
 		//The delay time could be 70us, 100us, 200us or 400 us
-		error |= write_reg(BQ_PROTECT1, (CURRENT_44A | BQ_SCP_70us ));
+		error |= write_reg(BQ_PROTECT1, (CURRENT_112A | BQ_SCP_70us ));
 
 		// clear SYS-STAT for init
 		write_reg(BQ_SYS_STAT,0xFF);
@@ -199,7 +201,8 @@ uint8_t bq76940_init(void) {
 		}
 
 	}
-
+	//init semaphore as taken
+	chBSemObjectInit(&bq_alert_semph, false);
 	chThdCreateStatic(sample_thread_wa, sizeof(sample_thread_wa), NORMALPRIO +2 , sample_thread, NULL);
 
 	return error;
@@ -320,7 +323,7 @@ static THD_FUNCTION(sample_thread, arg) {
 			afe_pool_count++;
 		}
 		bq76940_Alert_handler();
-
+		chBSemSignal(&bq_alert_semph); // give semaphore
 	}
 }
 
@@ -640,6 +643,10 @@ void bq_restore_uv_fault() {
 
 void bq_connect_only_charger (bool request) {
 	bq76940->connect_only_charger = request;
+}
+
+void bq_semaphore (void){
+	chBSemWaitTimeout(&bq_alert_semph, chTimeMS2I(500));// time out 500mS
 }
 #endif
 
