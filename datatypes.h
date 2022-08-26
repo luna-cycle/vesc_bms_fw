@@ -185,7 +185,7 @@ typedef struct __attribute__((packed)){
 
 	// HW-specific data
 	uint32_t hw_config_init_flag;
-	uint8_t hw_config[128];
+	uint8_t hw_config[256];
 
 	// Ah counter charge total
 	uint32_t ah_cnt_chg_total_init_flag;

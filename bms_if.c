@@ -197,6 +197,8 @@ uint16_t timeout = 0;
 bool charger_connected = false;
 BMS_BALANCE_MODE balance_prev_state = 0;
 BMS_BALANCE_MODE balance_prev_state_temp = 0;
+static int blink = 0;
+static int blink_count = 0;
 static THD_FUNCTION(charge_discharge_thd,p){
 	(void)p;
 	chRegSetThreadName("Charge_Discharge");
@@ -240,6 +242,7 @@ static THD_FUNCTION(charge_discharge_thd,p){
 			allow_ut_cell_fault_clear = 0;
 			balance_prev_state_temp = backup.config.balance_mode; // store previous balance mode
 			backup.config.balance_mode = BALANCE_MODE_DISABLED; // force disable balance until the temp is acceptable
+			blink_count = 0;
 		} else {
 			if( allow_ut_cell_fault_clear ) {
 				if( flag_temp_UT_cell_fault ) {
@@ -256,6 +259,7 @@ static THD_FUNCTION(charge_discharge_thd,p){
 			allow_ot_cell_fault_clear = 0;
 			balance_prev_state_temp = backup.config.balance_mode; // store previous balance mode
 			backup.config.balance_mode = BALANCE_MODE_DISABLED; // force disable balance until the temp is acceptable
+			blink_count = 0;
 		} else {
 			if( allow_ot_cell_fault_clear ) {
 				if( flag_temp_OT_cell_fault ) {
@@ -271,6 +275,7 @@ static THD_FUNCTION(charge_discharge_thd,p){
 			bms_if_fault_report(FAULT_CODE_HARDWARE_OVERTEMP);
 			flag_temp_hardware_fault = 1;
 			allow_temp_hw_fault_clear = 0;
+			blink_count = 0;
 			if(flag_OV_fault == 0){
 				balance_prev_state_temp = backup.config.balance_mode; // store previous balance mode
 			} else {
@@ -290,6 +295,7 @@ static THD_FUNCTION(charge_discharge_thd,p){
 		if ( (HW_GET_I_IN() > backup.config.max_charge_current) && (flag_I_charge_fault == 0) ) {
 			bms_if_fault_report(FAULT_CODE_CHARGE_OVERCURRENT);
 			flag_I_charge_fault = 1;
+			blink_count = 0;
 		} else {
 			if(HW_GET_I_IN() < backup.config.max_charge_current){
 				flag_I_charge_fault = 0;
@@ -301,6 +307,7 @@ static THD_FUNCTION(charge_discharge_thd,p){
 		if ( HW_SC_DETECTED() && (flag_SC_discharge_fault == 0) ) {
 			bms_if_fault_report(FAULT_CODE_DISCHARGE_SHORT_CIRCUIT);
 			flag_SC_discharge_fault = 1;
+			blink_count = 0;
 		} else {
 			flag_SC_discharge_fault = 0;
 		}
@@ -309,6 +316,7 @@ static THD_FUNCTION(charge_discharge_thd,p){
 		if ( HW_OC_DETECTED() && (flag_OC_discharge_fault == 0)) {
 			bms_if_fault_report(FAULT_CODE_DISCHARGE_OVERCURRENT);
 			flag_OC_discharge_fault = 1;
+			blink_count = 0;
 		} else {
 			flag_OC_discharge_fault = 0;
 		}
@@ -317,6 +325,7 @@ static THD_FUNCTION(charge_discharge_thd,p){
 		if ( HW_UV_DETECTED() && (flag_UV_fault == 0) ) {
 			bms_if_fault_report(FAULT_CODE_CELL_UNDERVOLTAGE);
 			flag_UV_fault = 1;
+			blink_count = 0;
 		} else {
 			flag_UV_fault = 0;
 		}
@@ -330,6 +339,7 @@ static THD_FUNCTION(charge_discharge_thd,p){
 			}
 			flag_OV_fault = 1;
 			allow_OV_fault_clear = 0;
+			blink_count = 0;
 		} else {
 			if( allow_OV_fault_clear == 1 ) {
 				if( flag_OV_fault ) {// if there was a fault, the balance mode was changed to always, must be restored
@@ -793,6 +803,180 @@ static THD_FUNCTION(if_thd, p) {
 		}
 
 		// RED LED
+#ifdef HW_BIDIRECTIONAL_SWITCH
+
+		if( BMS_state == BMS_FAULT ) {
+			switch(FAULT_CODE) {
+
+				case FAULT_CODE_CELL_OVERTEMP:
+					blink_count++;
+					if( blink_count > 1100) {
+						blink_count = 0;
+					}
+
+					if( blink_count < 600 ) {
+						blink++;
+						if (blink > 300) {
+							blink = 0;
+						}
+
+						if (blink < 150) {
+							LED_ON(LINE_LED_RED);
+						} else {
+							LED_OFF(LINE_LED_RED);
+						}
+					} else {
+						LED_OFF (LINE_LED_RED);
+						blink = 0;
+					}
+				break;
+
+				case FAULT_CODE_CELL_UNDERTEMP:
+					blink_count++;
+					if( blink_count > 1250) {
+						blink_count = 0;
+					}
+
+					if( blink_count < 750 ) {
+						blink++;
+						if (blink > 300) {
+							blink = 0;
+						}
+
+						if (blink < 150) {
+							LED_ON(LINE_LED_RED);
+						} else {
+							LED_OFF(LINE_LED_RED);
+						}
+					} else {
+						LED_OFF (LINE_LED_RED);
+						blink = 0;
+					}
+				break;
+
+				case FAULT_CODE_HARDWARE_OVERTEMP:
+					blink_count++;
+					if( blink_count > 1850) {
+						blink_count = 0;
+					}
+
+					if( blink_count < 1350 ) {
+						blink++;
+						if (blink > 300) {
+							blink = 0;
+						}
+
+						if (blink < 150) {
+							LED_ON(LINE_LED_RED);
+						} else {
+							LED_OFF(LINE_LED_RED);
+						}
+					} else {
+						LED_OFF (LINE_LED_RED);
+						blink = 0;
+					}
+				break;
+
+				case FAULT_CODE_CHARGE_OVERCURRENT:
+					blink_count++;
+					if( blink_count > 2150) {
+						blink_count = 0;
+					}
+
+					if( blink_count < 1650 ) {
+						blink++;
+						if (blink > 300) {
+							blink = 0;
+						}
+
+						if (blink < 150) {
+							LED_ON(LINE_LED_RED);
+						} else {
+							LED_OFF(LINE_LED_RED);
+						}
+					} else {
+						LED_OFF (LINE_LED_RED);
+						blink = 0;
+					}
+				break;
+
+				case FAULT_CODE_DISCHARGE_OVERCURRENT:
+					blink_count++;
+					if( blink_count > 2450) {
+						blink_count = 0;
+					}
+
+					if( blink_count < 1950 ) {
+						blink++;
+						if (blink > 300) {
+							blink = 0;
+						}
+
+						if (blink < 150) {
+							LED_ON(LINE_LED_RED);
+						} else {
+							LED_OFF(LINE_LED_RED);
+						}
+					} else {
+						LED_OFF (LINE_LED_RED);
+						blink = 0;
+					}
+				break;
+
+				case FAULT_CODE_CELL_UNDERVOLTAGE:
+					blink_count++;
+					if( blink_count > 2750) {
+						blink_count = 0;
+					}
+
+					if( blink_count < 2250 ) {
+						blink++;
+						if (blink > 300) {
+							blink = 0;
+						}
+
+						if (blink < 150) {
+							LED_ON(LINE_LED_RED);
+						} else {
+							LED_OFF(LINE_LED_RED);
+						}
+					} else {
+						LED_OFF (LINE_LED_RED);
+						blink = 0;
+					}
+				break;
+
+				case FAULT_CODE_CELL_OVERVOLTAGE:
+					blink_count++;
+					if( blink_count > 3000) {
+						blink_count = 0;
+					}
+
+					if( blink_count < 2550 ) {
+						blink++;
+						if (blink > 300) {
+							blink = 0;
+						}
+
+						if (blink < 150) {
+							LED_ON(LINE_LED_RED);
+						} else {
+							LED_OFF(LINE_LED_RED);
+						}
+					} else {
+						LED_OFF (LINE_LED_RED);
+						blink = 0;
+					}
+				break;
+
+				default:
+				break;
+
+
+			}
+
+
+#else
 		if (m_was_charge_overcurrent) {
 			// Prevent sleeping to keep the charge input disabled (as long as the battery does not run too low)
 			if (bms_if_get_soc() > 0.3) {
@@ -811,6 +995,7 @@ static THD_FUNCTION(if_thd, p) {
 			} else {
 				LED_OFF(LINE_LED_RED);
 			}
+#endif
 		} else {
 			if (m_is_balancing) {
 				LED_ON(LINE_LED_RED);
