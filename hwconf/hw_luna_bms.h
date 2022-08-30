@@ -32,6 +32,7 @@
 #define WH_CAN_USE_SLEEP_MODE
 #define USE_AFE_WD
 #define HW_BIDIRECTIONAL_SWITCH
+#define HW_USE_WKP2
 
 #define HW_MAX_TEMP_IC 			75.0	// AFE temp [°C]
 #define HW_MAX_MOSFET_TEMP		75.0	// MOSFET TEMP [°C]
