@@ -597,6 +597,10 @@ static THD_FUNCTION(charge_discharge_thd,p){
 	}
 }
 
+uint8_t bms_if_get_bms_state(void) {
+	return	BMS_state;
+}
+
 #endif
 static THD_FUNCTION(balance_thd, p) {
 	(void)p;

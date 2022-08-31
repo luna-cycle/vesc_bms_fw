@@ -227,10 +227,15 @@
 #define ADC_PRECHARGE_I			ADC_CHANNEL_IN1	// Precharge current
 #define ADC_PRECH_RES_TEMP		ADC_CHANNEL_IN16// Precharge resistor temp
 
-// Precharge pins
+// Precharge
 #define ADC_PRECHARGE_I_LINE			PAL_LINE(GPIOC, 0)
 #define ADC_PRECH_RES_TEMP_LINE			PAL_LINE(GPIOB, 1)
-
+#define PRECHARGE_ENABLE_LINE			PAL_LINE(GPIOB, 0)
+#define PRECHARGE_CURRENT_THRESHOLD 	0.1 // [A]
+#define PRECHARGE_TEMP_MAX 				70.0 // precharge resistor temp [°C]
+#define PRECHARGE_TEMP_HYST				0.8	// precharge temp hysteresis
+#define PRECHARGE_ON					palSetLine(PRECHARGE_ENABLE_LINE)
+#define PRECHARGE_OFF					palClearLine(PRECHARGE_ENABLE_LINE)
 void hw_luna_init(void);
 float hw_luna_get_temp(int sensors);
 float hw_luna_get_cell_temp_max(void);

@@ -71,4 +71,5 @@ float bms_if_get_temp_mosfet (void);
 float bms_if_get_connector_temp(void);
 float bms_if_get_vreg_temp (void);
 bool bq_oc_sc_detected (void);
+uint8_t bms_if_get_bms_state(void);
 #endif /* BMS_IF_H_ */

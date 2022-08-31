@@ -22,9 +22,13 @@
 #include "terminal.h"
 #include "commands.h"
 #include "bq76940.h"
+#include "bms_if.h"
 
 static void terminal_cmd_shipmode(int argc, const char **argv);
 static void terminal_cmd_connect(int argc, const char **argv);
+
+static THD_WORKING_AREA(precharge_thread_wa, 512);
+static THD_FUNCTION(precharge_thread, arg);
 
 void hw_luna_init(void){
 	bq76940_init();
@@ -36,6 +40,10 @@ void hw_luna_init(void){
 	// Config precharge pins
 	//palSetLineMode(ADC_PRECHARGE_I_LINE, PAL_MODE_INPUT_ANALOG);    // hardware under process, uncomment for hardware V3
 	//palSetLineMode(ADC_PRECH_RES_TEMP_LINE, PAL_MODE_INPUT_ANALOG);
+	palSetLineMode(PRECHARGE_ENABLE_LINE, PAL_MODE_OUTPUT_PUSHPULL);
+	PWR->PUCRB |= PWR_PUCRB_PB0; //PB0 (precharge pin pull up during standby
+	PWR->CR3 |= PWR_CR3_APC;	// apply pull up configuration
+	chThdCreateStatic(precharge_thread_wa, sizeof(precharge_thread_wa), NORMALPRIO +3 , precharge_thread, NULL);
 }
 
 float hw_luna_get_cell_temp_max(void) {
@@ -129,4 +137,42 @@ float hw_luna_get_connector_temp(){// return the higest temperature between conn
 	}
 
 	return temp_aux;
+}
+
+float precharge_current = 0;
+float precharge_temp = 0;
+bool flag_precharge_temp = 0;
+static THD_FUNCTION(precharge_thread, arg) {
+	(void)arg;
+	chRegSetThreadName("PRECHARGE_MONITOR");
+
+	while ( !chThdShouldTerminateX() ) {
+
+		chThdSleepMilliseconds(10);
+		precharge_current = 0;//pwr_get_adc_ch1() * 0.5; // V to I // commented, until the hardware is finished
+		precharge_temp = 0;//pwr_get_adc_ch16(); // todo: temp transfer function
+
+		if( precharge_current < PRECHARGE_CURRENT_THRESHOLD && flag_precharge_temp == 0  ) {
+			//enable DSC pin
+			bq_allow_discharge(true);
+		} else {
+			// disable DSC pin
+			bq_allow_discharge(false);
+		}
+
+		if( precharge_temp > PRECHARGE_TEMP_MAX || bms_if_get_bms_state() == BMS_FAULT ) {
+			flag_precharge_temp = 1;
+		} else {
+			if( precharge_temp < (PRECHARGE_TEMP_MAX * PRECHARGE_TEMP_HYST) ){
+				flag_precharge_temp = 0;
+				}
+		}
+
+		if( flag_precharge_temp == 0 ) {
+			PRECHARGE_ON;	// if no temp fault enable precharge
+		} else {
+			PRECHARGE_OFF;
+		}
+
+	}
 }

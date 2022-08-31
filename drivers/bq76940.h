@@ -193,4 +193,5 @@ void bq_connect_only_charger (bool);
 bool bq_oc_detected(void);
 bool bq_sc_detected(void);
 void bq_semaphore(void);
+void bq_allow_discharge(bool);
 #endif /* BQ76940_H_ */

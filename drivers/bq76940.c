@@ -72,6 +72,7 @@ typedef struct {
 	bool UV_detected;
 	bool OV_detected;
 	bool connect_only_charger;
+	bool discharge_allowed;
 	uint8_t re_init_retry;
 } bq76940_t;
 
@@ -112,6 +113,7 @@ uint8_t tripVoltage(float voltage);
 void bq_disconnect_battery(bool disconnect);
 bool status_load_present(void);
 binary_semaphore_t bq_alert_semph;
+
 //Macros
 #define READ_ALERT()	palReadPad(BQ76940_ALERT_GPIO, BQ76940_ALERT_PIN)
 
@@ -494,7 +496,9 @@ void bq_connect_pack(bool request) {
 			bq_discharge_disable();
 			bq_charge_enable();
 		} else {
-			bq_discharge_enable();
+			if( bq76940->discharge_allowed ) { //ask for precharge condition
+				bq_discharge_enable();
+			}
 			bq_charge_enable();
 		}
 
@@ -647,6 +651,10 @@ void bq_connect_only_charger (bool request) {
 
 void bq_semaphore (void){
 	chBSemWaitTimeout(&bq_alert_semph, chTimeMS2I(500));// time out 500mS
+}
+
+void bq_allow_discharge(bool set) {
+	bq76940->discharge_allowed = set;
 }
 #endif
 
