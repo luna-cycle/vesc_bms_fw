@@ -58,6 +58,10 @@
 #define HW_ADC_TEMP_SENSORS		6
 #endif
 
+#ifndef HW_MCU_ADC_TEMP_SENSOR
+#define HW_MCU_ADC_TEMP_SENSOR HW_ADC_TEMP_SENSORS
+#endif
+
 #ifndef ADC_CH_TEMP6
 #define ADC_CH_TEMP6			ADC_CH_TEMP5
 #define LINE_TEMP_6				LINE_TEMP_5

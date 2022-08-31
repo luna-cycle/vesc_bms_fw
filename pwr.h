@@ -50,5 +50,6 @@ float pwr_get_vcharge(void);
 float pwr_get_vfuse(void);
 float pwr_get_iin(void);
 float pwr_get_temp(int sensor);
-
+float pwr_get_adc_ch1(void);
+float pwr_get_adc_ch16(void);
 #endif /* PWR_H_ */

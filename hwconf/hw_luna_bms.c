@@ -33,6 +33,9 @@ void hw_luna_init(void){
 	terminal_register_command_callback("shipmode", "Shipmode = turn off bq 76940", 0, terminal_cmd_shipmode);	
 	terminal_register_command_callback("Connect", "Connect=turn on big mosfets", 0, terminal_cmd_connect);
 
+	// Config precharge pins
+	//palSetLineMode(ADC_PRECHARGE_I_LINE, PAL_MODE_INPUT_ANALOG);    // hardware under process, uncomment for hardware V3
+	//palSetLineMode(ADC_PRECH_RES_TEMP_LINE, PAL_MODE_INPUT_ANALOG);
 }
 
 float hw_luna_get_cell_temp_max(void) {

@@ -21,9 +21,12 @@
 #include "main.h"
 #include <math.h>
 #include <string.h>
+#include HW_HEADER
 
 // Settings
+#ifndef ADC_CHANNELS
 #define ADC_CHANNELS	11
+#endif
 
 // Private variables
 static volatile float m_v_charge = 0.0;
@@ -33,6 +36,7 @@ static volatile float m_temps[HW_ADC_TEMP_SENSORS] = {0.0};
 
 static THD_WORKING_AREA(adc_thd_wa, 2048);
 
+#if ADC_CHANNELS == 11
 const ADCConversionGroup adcgrpcfg1 = {
 		.circular     = false,
 		.num_channels = ADC_CHANNELS,
@@ -94,7 +98,7 @@ static THD_FUNCTION(adc_thd, p) {
 				temps[j] += samples[ADC_CHANNELS * i + 3 + j];
 			}
 
-			v_fuse += samples[ADC_CHANNELS * i + HW_ADC_TEMP_SENSORS + 3];
+			v_fuse += samples[ADC_CHANNELS * i + HW_ADC_TEMP_SENSORS + 3];// error here? v_fuse should be ADC_CHANNEL*1 + HW_ADC_TEMP_SENSORS + 4?
 		}
 
 		ref /= (float)num_samp;
@@ -120,6 +124,118 @@ static THD_FUNCTION(adc_thd, p) {
 		chThdSleepMilliseconds(1);
 	}
 }
+#endif
+#if ADC_CHANNELS == 13
+static volatile float m_adc_ch1 = 0.0;
+static volatile float m_adc_ch16 = 0.0;
+const ADCConversionGroup adcgrpcfg1 = {
+		.circular     = false,
+		.num_channels = ADC_CHANNELS,
+		.end_cb       = NULL,
+		.error_cb     = NULL,
+		.cfgr         = ADC_CFGR_CONT,
+		.cfgr2        = 0U,
+		.tr1          = ADC_TR(0, 4095),
+		.smpr         = {
+				ADC_SMPR1_SMP_AN0(ADC_SMPR_SMP_92P5) | ADC_SMPR1_SMP_AN1(ADC_SMPR_SMP_92P5) |
+				ADC_SMPR1_SMP_AN2(ADC_SMPR_SMP_92P5) | ADC_SMPR1_SMP_AN3(ADC_SMPR_SMP_92P5) |
+				ADC_SMPR1_SMP_AN4(ADC_SMPR_SMP_92P5) | ADC_SMPR1_SMP_AN5(ADC_SMPR_SMP_92P5) |
+				ADC_SMPR1_SMP_AN6(ADC_SMPR_SMP_92P5) | ADC_SMPR1_SMP_AN7(ADC_SMPR_SMP_92P5) |
+				ADC_SMPR1_SMP_AN8(ADC_SMPR_SMP_92P5) | ADC_SMPR1_SMP_AN9(ADC_SMPR_SMP_92P5),
+				ADC_SMPR2_SMP_AN10(ADC_SMPR_SMP_92P5) | ADC_SMPR2_SMP_AN11(ADC_SMPR_SMP_92P5) |
+				ADC_SMPR2_SMP_AN12(ADC_SMPR_SMP_92P5) | ADC_SMPR2_SMP_AN13(ADC_SMPR_SMP_92P5) |
+				ADC_SMPR2_SMP_AN14(ADC_SMPR_SMP_92P5) | ADC_SMPR2_SMP_AN15(ADC_SMPR_SMP_92P5) |
+				ADC_SMPR2_SMP_AN16(ADC_SMPR_SMP_92P5) | ADC_SMPR2_SMP_AN17(ADC_SMPR_SMP_92P5) |
+				ADC_SMPR2_SMP_AN18(ADC_SMPR_SMP_92P5)
+		},
+		.sqr          = {
+				ADC_SQR1_SQ1_N(ADC_CHANNEL_IN0) | ADC_SQR1_SQ2_N(ADC_CH_V_CHARGE) |
+				ADC_SQR1_SQ3_N(ADC_CH_CURRENT) | ADC_SQR1_SQ4_N(ADC_CH_TEMP0),
+				ADC_SQR2_SQ5_N(ADC_CH_TEMP1) | ADC_SQR2_SQ6_N(ADC_CH_TEMP2) |
+				ADC_SQR2_SQ7_N(ADC_CH_TEMP3) | ADC_SQR2_SQ8_N(ADC_CH_TEMP4) |
+				ADC_SQR2_SQ9_N(ADC_CH_TEMP5),
+				ADC_SQR3_SQ10_N(ADC_CH_TEMP6) | ADC_SQR3_SQ11_N(ADC_CH_V_FUSE) |
+				ADC_SQR3_SQ12_N(ADC_CHANNEL_IN1) |  ADC_SQR3_SQ13_N(ADC_CHANNEL_IN16), // CHANNEL 1 AND 16 ADDED
+				0U
+		}
+};
+
+static THD_FUNCTION(adc_thd, p) {
+	(void)p;
+	chRegSetThreadName("ADC");
+
+	adcStart(&ADCD1, NULL);
+	adcSTM32EnableVREF(&ADCD1);
+	chThdSleepMilliseconds(1);
+
+	while (!chThdShouldTerminateX()) {
+		int num_samp = 8;
+		adcsample_t samples[num_samp * ADC_CHANNELS];
+
+		adcConvert(&ADCD1, &adcgrpcfg1, samples, num_samp);
+
+		float v_ch = 0.0;
+		float ref = 0.0;
+		float i_in = 0.0;
+		float v_fuse = 0.0;
+		float adc_ch1 = 0.0;
+		float adc_ch16 = 0.0;
+		float temps[HW_MCU_ADC_TEMP_SENSOR];
+		memset(temps, 0, sizeof(temps));
+
+		for (int i = 0;i < num_samp;i++) {
+			ref += samples[ADC_CHANNELS * i + 0];
+			v_ch += samples[ADC_CHANNELS * i + 1];
+			i_in += samples[ADC_CHANNELS * i + 2];
+
+			for (int j = 0;j < HW_MCU_ADC_TEMP_SENSOR;j++) {
+				temps[j] += samples[ADC_CHANNELS * i + 3 + j];
+			}
+
+			v_fuse += samples[ADC_CHANNELS * i + HW_MCU_ADC_TEMP_SENSOR + 4];
+			adc_ch1 += samples[ADC_CHANNELS * i + HW_MCU_ADC_TEMP_SENSOR + 5];
+			adc_ch16 += samples[ADC_CHANNELS * i + HW_MCU_ADC_TEMP_SENSOR + 6];
+		}
+
+		ref /= (float)num_samp;
+		v_ch /= (float)num_samp;
+		i_in /= (float)num_samp;
+		v_fuse /= (float)num_samp;
+		adc_ch1 /= (float)num_samp;
+		adc_ch16 /= (float)num_samp;
+		for (int j = 0;j < HW_MCU_ADC_TEMP_SENSOR;j++) {
+			temps[j] /= (float)num_samp;
+		}
+
+		uint16_t vrefint_cal = *((uint16_t*)((uint32_t)0x1FFF75AA));
+		float vdda = (3.0 * (float)vrefint_cal) / (float)ref;
+
+		m_v_charge = (v_ch / (4095 / vdda)) * ((R_CHARGE_TOP + R_CHARGE_BOTTOM) / R_CHARGE_BOTTOM);
+		m_i_in = -((3.3 * ((i_in / 4095.0))) - 1.65) * (1.0 / HW_SHUNT_AMP_GAIN) * (1.0 / backup.config.ext_shunt_res);
+		m_v_fuse = (v_fuse / (4095 / vdda)) * ((R_CHARGE_TOP + R_CHARGE_BOTTOM) / R_CHARGE_BOTTOM);
+		m_adc_ch1 = (adc_ch1 / (4095 / vdda));
+		m_adc_ch16 = (adc_ch16 / (4095 / vdda));
+		for (int j = 0;j < HW_MCU_ADC_TEMP_SENSOR;j++) {
+			m_temps[j] = NTC_TEMP_WITH_IND(temps[j], j);
+		}
+
+		chThdSleepMilliseconds(1);
+	}
+}
+
+float pwr_get_adc_ch1(void){
+
+	return m_adc_ch1; // return adc1 channel 1 in [V]
+}
+
+float pwr_get_adc_ch16(void){
+
+	return m_adc_ch16; // return adc1 channel 16 in [V]
+}
+
+
+#endif
+
 
 void pwr_init(void) {
 	HW_INIT_HOOK();

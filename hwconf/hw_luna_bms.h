@@ -33,6 +33,7 @@
 #define USE_AFE_WD
 #define HW_BIDIRECTIONAL_SWITCH
 #define HW_USE_WKP2
+#define ADC_CHANNELS 13
 
 #define HW_MAX_TEMP_IC 			75.0	// AFE temp [°C]
 #define HW_MAX_MOSFET_TEMP		75.0	// MOSFET TEMP [°C]
@@ -84,7 +85,8 @@
 #define HW_WAIT_AFE()				bq_semaphore()
 
 // Settings
-#define HW_ADC_TEMP_SENSORS		8
+#define HW_ADC_TEMP_SENSORS		8// total temp sensors
+#define HW_MCU_ADC_TEMP_SENSOR	7// temp sensor conencted to the MCU ADC
 #define HW_CELLS_SERIES			14
 #define HW_SHUNT_AMP_GAIN		(20.0)
 #define V_REG					3.3
@@ -194,7 +196,7 @@
 #define HW_CAN_OFF()			palClearLine(LINE_CAN_EN)
 
 // Enable thermistor bank A
-#define LINE_TEMP_0_EN			PAL_LINE(GPIOB, 1)
+#define LINE_TEMP_0_EN			PAL_LINE(GPIOB, 1)//PAL_LINE(GPIOB, 2) // for hardware V3 LINE_TEMP_0_EN is PB2
 
 // Enable thermistor bank B. All repeadted until we make it more abstract
 #define LINE_TEMP_1_EN			PAL_LINE(GPIOC, 2)
@@ -222,6 +224,12 @@
 #define ADC_CH_TEMP4			ADC_CHANNEL_IN12 // Negative Connector terminal temp
 #define ADC_CH_TEMP5			ADC_CHANNEL_IN2  // Positive Connector terminal temp
 #define ADC_CH_TEMP6			ADC_CHANNEL_IN4  // MOSFET temp
+#define ADC_PRECHARGE_I			ADC_CHANNEL_IN1	// Precharge current
+#define ADC_PRECH_RES_TEMP		ADC_CHANNEL_IN16// Precharge resistor temp
+
+// Precharge pins
+#define ADC_PRECHARGE_I_LINE			PAL_LINE(GPIOC, 0)
+#define ADC_PRECH_RES_TEMP_LINE			PAL_LINE(GPIOB, 1)
 
 void hw_luna_init(void);
 float hw_luna_get_temp(int sensors);

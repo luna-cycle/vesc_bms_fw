@@ -207,6 +207,7 @@ static THD_FUNCTION(charge_discharge_thd,p){
 	chThdSleepMilliseconds(100);// time to acquire ADCs
 	for (;;) {
 		HW_WAIT_AFE();
+
 		// check can status
 		bms_soc_soh_temp_stat *msg;
 		bool chg_can_ok = true;
