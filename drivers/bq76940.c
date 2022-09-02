@@ -498,6 +498,8 @@ void bq_connect_pack(bool request) {
 		} else {
 			if( bq76940->discharge_allowed ) { //ask for precharge condition
 				bq_discharge_enable();
+			} else {
+				bq_discharge_disable();
 			}
 			bq_charge_enable();
 		}

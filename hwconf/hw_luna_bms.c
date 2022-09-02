@@ -23,6 +23,7 @@
 #include "commands.h"
 #include "bq76940.h"
 #include "bms_if.h"
+#include "sleep.h"
 
 static void terminal_cmd_shipmode(int argc, const char **argv);
 static void terminal_cmd_connect(int argc, const char **argv);
@@ -142,37 +143,88 @@ float hw_luna_get_connector_temp(){// return the higest temperature between conn
 float precharge_current = 0;
 float precharge_temp = 0;
 bool flag_precharge_temp = 0;
+bool flag_precharge_OK = 0;
+enum {
+	WAIT_DISCHARGE = 0,
+	WAIT_CURRENT_THRESHOLD,
+	WAIT_FOR_IDLE,
+	TEMP_FAULT
+};
+int PRECHARGE_STATUS = WAIT_DISCHARGE;
+uint16_t precharge_timeout;
 static THD_FUNCTION(precharge_thread, arg) {
 	(void)arg;
 	chRegSetThreadName("PRECHARGE_MONITOR");
 
 	while ( !chThdShouldTerminateX() ) {
 
-		chThdSleepMilliseconds(10);
-		precharge_current = 0;//pwr_get_adc_ch1() * 0.5; // V to I // commented, until the hardware is finished
+
 		precharge_temp = 0;//pwr_get_adc_ch16(); // todo: temp transfer function
 
-		if( precharge_current < PRECHARGE_CURRENT_THRESHOLD && flag_precharge_temp == 0  ) {
-			//enable DSC pin
-			bq_allow_discharge(true);
-		} else {
-			// disable DSC pin
-			bq_allow_discharge(false);
-		}
+		if( bms_if_get_bms_state() != BMS_FAULT ) {
 
-		if( precharge_temp > PRECHARGE_TEMP_MAX || bms_if_get_bms_state() == BMS_FAULT ) {
-			flag_precharge_temp = 1;
-		} else {
-			if( precharge_temp < (PRECHARGE_TEMP_MAX * PRECHARGE_TEMP_HYST) ){
-				flag_precharge_temp = 0;
-				}
-		}
+			switch(PRECHARGE_STATUS) {
 
-		if( flag_precharge_temp == 0 ) {
-			PRECHARGE_ON;	// if no temp fault enable precharge
-		} else {
-			PRECHARGE_OFF;
-		}
+				case WAIT_DISCHARGE:
+					bq_allow_discharge(false);
+					PRECHARGE_ON();
+					chThdSleepMilliseconds(1);// time to ADC convert
+					precharge_current = 1;//pwr_get_adc_ch1() * 0.5; // V to I // commented, until the hardware is finished
+					if ( precharge_current > (PRECHARGE_CURRENT_THRESHOLD *0.5) && precharge_temp < PRECHARGE_TEMP_MAX ) {
+						PRECHARGE_STATUS = WAIT_CURRENT_THRESHOLD;
+					} else {
+						if ( precharge_temp >= PRECHARGE_TEMP_MAX ) {
+							PRECHARGE_STATUS = TEMP_FAULT;
+						}
+					}
+				break;
 
+				case WAIT_CURRENT_THRESHOLD:
+					chThdSleepMilliseconds(1);// time to ADC convert
+					precharge_current = 0;//pwr_get_adc_ch1() * 0.5; // V to I // commented, until the hardware is finished
+					if( precharge_current < PRECHARGE_CURRENT_THRESHOLD && precharge_temp < PRECHARGE_TEMP_MAX ) {
+						PRECHARGE_STATUS = WAIT_FOR_IDLE;
+					} else {
+						if ( precharge_temp >= PRECHARGE_TEMP_MAX ) {
+							PRECHARGE_STATUS = TEMP_FAULT;
+						}
+					}
+				break;
+
+				case WAIT_FOR_IDLE:
+					bq_allow_discharge(true);
+					chThdSleepMilliseconds(300); // wait for bms to detect the discarging and change state
+					if( bms_if_get_bms_state() == BMS_IDLE && precharge_temp < PRECHARGE_TEMP_MAX ) {
+						PRECHARGE_STATUS = WAIT_DISCHARGE;
+					} else {
+						if ( precharge_temp >= PRECHARGE_TEMP_MAX ) {
+							PRECHARGE_STATUS = TEMP_FAULT;
+						}
+					}
+				break;
+
+				case TEMP_FAULT:
+					bq_allow_discharge(false);
+					PRECHARGE_OFF();
+					sleep_reset();
+					for ( precharge_timeout = (RECONNECTION_TIMEOUT * 10) ; precharge_timeout > 0 ; precharge_timeout-- ) {
+						chThdSleepMilliseconds(100);
+						sleep_reset();
+					}
+					if(precharge_temp < (PRECHARGE_TEMP_MAX * PRECHARGE_TEMP_HYST)) {
+						PRECHARGE_STATUS = WAIT_DISCHARGE;
+					}
+				break;
+			}
+
+		} else {
+			while(bms_if_get_bms_state() == BMS_FAULT) {// the pre charge must not interfiere in the fault handle
+				PRECHARGE_OFF(); // the precahrge must be off in order to let the AFE to detect for example a short chircuit
+				bq_allow_discharge(true); // let the AFE to decide if connect or not
+				PRECHARGE_STATUS = WAIT_DISCHARGE; // when the bms recovers from the fault, return to the wait for discharge state
+				chThdSleepMilliseconds(300); // let time to the AFE and charge_discharge task to handle the fault
+										// the AFE thread will be executed after 250ms (worst case)
+			}
+		}
 	}
 }

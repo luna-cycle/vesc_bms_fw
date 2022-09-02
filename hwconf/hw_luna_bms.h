@@ -234,8 +234,8 @@
 #define PRECHARGE_CURRENT_THRESHOLD 	0.1 // [A]
 #define PRECHARGE_TEMP_MAX 				70.0 // precharge resistor temp [°C]
 #define PRECHARGE_TEMP_HYST				0.8	// precharge temp hysteresis
-#define PRECHARGE_ON					palSetLine(PRECHARGE_ENABLE_LINE)
-#define PRECHARGE_OFF					palClearLine(PRECHARGE_ENABLE_LINE)
+#define PRECHARGE_ON()					palSetLine(PRECHARGE_ENABLE_LINE)
+#define PRECHARGE_OFF()					palClearLine(PRECHARGE_ENABLE_LINE)
 void hw_luna_init(void);
 float hw_luna_get_temp(int sensors);
 float hw_luna_get_cell_temp_max(void);
