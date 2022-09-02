@@ -46,7 +46,7 @@
 #define RECONNECTION_TIMEOUT	3		// seconds to wait before reconnection attempt
 #define HW_MIN_CELL				2.8		//min cell voltage [V]
 #define HW_HYSTEREIS_MIN_CELL	0.05	//min cell hysteresis to clear undervoltage [V]
-#define HW_MAX_CELL				4.2		//max cell voltage [V]
+#define HW_MAX_CELL				4.25	//max cell voltage [V]
 #define HW_HYSTEREIS_MAX_CELL	0.05	//max cell hysteresis to clear undervoltage [V]
 
 // Macros
