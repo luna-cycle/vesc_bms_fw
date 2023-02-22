@@ -188,6 +188,15 @@
 #ifndef HW_WAIT_AFE
 #define HW_WAIT_AFE() 			__NOP();//null
 #endif
+
+#ifndef HW_PCB_TEMP
+#define HW_PCB_TEMP()           bms_if_get_temp(0)
+#endif
+
+#ifndef HW_TEMP_CELLS_MIN
+#define HW_TEMP_CELLS_MIN()     0.0 
+#endif
+
 // Functions
 uint8_t hw_id_from_uuid(void);
 

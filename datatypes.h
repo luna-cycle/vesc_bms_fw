@@ -306,6 +306,9 @@ typedef struct {
 	float v_cell_min;
 	float v_cell_max;
 	float pcb_humidity;
+	float temp_batt_min;
+	float temp_connector;
+	float temp_mosfets;
 } fault_data;
 
 // CAN commands
