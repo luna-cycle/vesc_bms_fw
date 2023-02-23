@@ -653,8 +653,6 @@ static THD_FUNCTION(balance_thd, p) {
 		case BALANCE_MODE_DURING_AND_AFTER_CHARGING:
 			if (time_since_charge < 2.0) {
 				m_bal_ok = true;
-			}else{
-				m_bal_ok = false;
 			}
 			break;
 
