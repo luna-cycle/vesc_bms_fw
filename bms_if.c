@@ -199,6 +199,8 @@ BMS_BALANCE_MODE balance_prev_state = 0;
 BMS_BALANCE_MODE balance_prev_state_temp = 0;
 static int blink = 0;
 static int blink_count = 0;
+float aux_temp_limit = 0.0;
+bool BMS_was_chargin = 0;
 static THD_FUNCTION(charge_discharge_thd,p){
 	(void)p;
 	chRegSetThreadName("Charge_Discharge");
@@ -253,8 +255,20 @@ static THD_FUNCTION(charge_discharge_thd,p){
 			}
 		}
 
-		if ( (HW_TEMP_CELLS_MAX() >= backup.config.t_charge_max && backup.config.t_charge_mon_en) && (flag_temp_OT_cell_fault == 0)) {
+		if(BMS_state == BMS_CHARGING){
+			aux_temp_limit = HW_MAX_CELL_TEMP_CHARG;
+		}
+		else{
+			aux_temp_limit = HW_MAX_CELL_TEMP_DISCH;	
+		}
+		
+		if ( (HW_TEMP_CELLS_MAX() >= aux_temp_limit) && (flag_temp_OT_cell_fault == 0)) {
 			bms_if_fault_report(FAULT_CODE_CELL_OVERTEMP);
+			if(BMS_state == BMS_CHARGING){
+				BMS_was_chargin = TRUE; // we need to know if the pack was chargin to avoid using discharge temp limit during the fault recover
+			}else{
+				BMS_was_chargin = FALSE;
+			}
 			flag_temp_OT_cell_fault = 1;
 			allow_ot_cell_fault_clear = 0;
 			balance_prev_state_temp = backup.config.balance_mode; // store previous balance mode
@@ -444,7 +458,12 @@ static THD_FUNCTION(charge_discharge_thd,p){
 
 					case FAULT_CODE_CELL_OVERTEMP:
 						HW_PACK_DISCONNECT();// disconnect pack until the temp is acceptable
-						if(HW_TEMP_CELLS_MAX() < (backup.config.t_charge_max - HW_HYSTERESIS_TEMP)){
+						if(BMS_was_chargin){
+							aux_temp_limit = HW_MAX_CELL_TEMP_CHARG; // if the pack was chargin before the temp fault
+						}else{											// apply the charge temp limit
+							aux_temp_limit = HW_MAX_CELL_TEMP_DISCH;
+						}
+						if(HW_TEMP_CELLS_MAX() < (aux_temp_limit - HW_HYSTERESIS_TEMP)){
 							allow_ot_cell_fault_clear = 1;
 						}
 					break;
@@ -1206,12 +1225,14 @@ void bms_if_fault_report(bms_fault_code fault) {
 	f.current = bms_if_get_i_in();
 	f.current_ic = bms_if_get_i_in_ic();
 	f.temp_batt = HW_TEMP_CELLS_MAX();
-	f.temp_pcb = bms_if_get_temp(0);
+	f.temp_pcb = HW_PCB_TEMP();
 	f.temp_ic = bms_if_get_temp_ic();
 	f.v_cell_min = bms_if_get_v_cell_min();
 	f.v_cell_max = bms_if_get_v_cell_max();
 	f.pcb_humidity = bms_if_get_humsens_hum_pcb();
-
+	f.temp_batt_min = HW_TEMP_CELLS_MIN();
+	f.temp_connector = HW_CONNECTOR_TEMP();
+	f.temp_mosfets = HW_MOSFET_SENSOR();
 	terminal_add_fault_data(&f);
 
 	if (m_fault_cb)
