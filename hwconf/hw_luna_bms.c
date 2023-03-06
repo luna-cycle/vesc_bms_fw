@@ -39,11 +39,11 @@ void hw_luna_init(void){
 	terminal_register_command_callback("Connect", "Connect=turn on big mosfets", 0, terminal_cmd_connect);
 
 	// Config precharge pins
-	//palSetLineMode(ADC_PRECHARGE_I_LINE, PAL_MODE_INPUT_ANALOG);    // hardware under process, uncomment for hardware V3
-	//palSetLineMode(ADC_PRECH_RES_TEMP_LINE, PAL_MODE_INPUT_ANALOG);
+	palSetLineMode(ADC_PRECHARGE_I_LINE, PAL_MODE_INPUT_ANALOG);    // hardware under process, uncomment for hardware V3
+	palSetLineMode(ADC_PRECH_RES_TEMP_LINE, PAL_MODE_INPUT_ANALOG);
 	palSetLineMode(PRECHARGE_ENABLE_LINE, PAL_MODE_OUTPUT_PUSHPULL);
-	PWR->PUCRB |= PWR_PUCRB_PB0; //PB0 (precharge pin pull up during standby
-	PWR->CR3 |= PWR_CR3_APC;	// apply pull up configuration
+	//PWR->PUCRB |= PWR_PUCRB_PB0; //PB0 (precharge pin pull up during standby
+	//PWR->CR3 |= PWR_CR3_APC;	// apply pull up configuration
 	chThdCreateStatic(precharge_thread_wa, sizeof(precharge_thread_wa), NORMALPRIO +3 , precharge_thread, NULL);
 }
 

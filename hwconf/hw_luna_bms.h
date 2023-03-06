@@ -191,12 +191,12 @@
 
 //CANbus
 #define HW_SET_CAN_ENABLE_LINE() palSetLineMode(LINE_CAN_EN, PAL_MODE_OUTPUT_PUSHPULL)
-#define LINE_CAN_EN				PAL_LINE(GPIOB, 7)
+#define LINE_CAN_EN				PAL_LINE(GPIOB, 14)
 #define HW_CAN_ON()				palSetLine(LINE_CAN_EN)
 #define HW_CAN_OFF()			palClearLine(LINE_CAN_EN)
 
 // Enable thermistor bank A
-#define LINE_TEMP_0_EN			PAL_LINE(GPIOB, 1)//PAL_LINE(GPIOB, 2) // for hardware V3 LINE_TEMP_0_EN is PB2
+#define LINE_TEMP_0_EN			/*PAL_LINE(GPIOB, 1)*/PAL_LINE(GPIOB, 2) // for hardware V3 LINE_TEMP_0_EN is PB2
 
 // Enable thermistor bank B. All repeadted until we make it more abstract
 #define LINE_TEMP_1_EN			PAL_LINE(GPIOC, 2)
@@ -231,11 +231,11 @@
 #define ADC_PRECHARGE_I_LINE			PAL_LINE(GPIOC, 0)
 #define ADC_PRECH_RES_TEMP_LINE			PAL_LINE(GPIOB, 1)
 #define PRECHARGE_ENABLE_LINE			PAL_LINE(GPIOB, 0)
-#define PRECHARGE_CURRENT_THRESHOLD 	0.1 // [A]
+#define PRECHARGE_CURRENT_THRESHOLD 	0.6 // [A] //Originally is 0.1 but here the MCU into Stand by mode with this value!
 #define PRECHARGE_TEMP_MAX 				70.0 // precharge resistor temp [°C]
 #define PRECHARGE_TEMP_HYST				0.8	// precharge temp hysteresis
-#define PRECHARGE_ON()					palSetLine(PRECHARGE_ENABLE_LINE)
-#define PRECHARGE_OFF()					palClearLine(PRECHARGE_ENABLE_LINE)
+#define PRECHARGE_ON					palClearLine(PRECHARGE_ENABLE_LINE)
+#define PRECHARGE_OFF					palSetLine(PRECHARGE_ENABLE_LINE)
 void hw_luna_init(void);
 float hw_luna_get_temp(int sensors);
 float hw_luna_get_cell_temp_max(void);

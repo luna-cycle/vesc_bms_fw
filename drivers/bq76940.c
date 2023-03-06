@@ -127,7 +127,6 @@ uint8_t bq76940_init(void) {
 	bq76940->shunt_res = HW_SHUNT_RES;
 
 	palSetPadMode(BQ76940_ALERT_GPIO, BQ76940_ALERT_PIN, PAL_MODE_INPUT);
-	palSetPadMode(BQ76940_LRD_GPIO, BQ76940_LRD_PIN, PAL_MODE_INPUT_PULLDOWN);
 
 	memset(&m_i2c, 0, sizeof(i2c_bb_state));
 	m_i2c.sda_gpio = BQ76940_SDA_GPIO;
