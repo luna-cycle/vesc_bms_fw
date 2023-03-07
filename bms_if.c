@@ -195,8 +195,6 @@ uint8_t oc_sc_count_attempt = 0;
 uint8_t oc_charge_count_attempt = 0;
 uint16_t timeout = 0;
 bool charger_connected = false;
-BMS_BALANCE_MODE balance_prev_state = 0;
-BMS_BALANCE_MODE balance_prev_state_temp = 0;
 static int blink = 0;
 static int blink_count = 0;
 float aux_temp_limit = 0.0;
@@ -204,8 +202,6 @@ bool BMS_was_chargin = 0;
 static THD_FUNCTION(charge_discharge_thd,p){
 	(void)p;
 	chRegSetThreadName("Charge_Discharge");
-	balance_prev_state = backup.config.balance_mode; // store initial balance mode
-	balance_prev_state_temp = backup.config.balance_mode;
 	chThdSleepMilliseconds(100);// time to acquire ADCs
 	for (;;) {
 		HW_WAIT_AFE();
@@ -242,16 +238,10 @@ static THD_FUNCTION(charge_discharge_thd,p){
 			bms_if_fault_report(FAULT_CODE_CELL_UNDERTEMP);
 			flag_temp_UT_cell_fault = 1;
 			allow_ut_cell_fault_clear = 0;
-			balance_prev_state_temp = backup.config.balance_mode; // store previous balance mode
-			backup.config.balance_mode = BALANCE_MODE_DISABLED; // force disable balance until the temp is acceptable
 			blink_count = 0;
 		} else {
 			if( allow_ut_cell_fault_clear ) {
-				if( flag_temp_UT_cell_fault ) {
-					backup.config.balance_mode = balance_prev_state_temp;// restore balance mode if fault is cleared
-				}
 				flag_temp_UT_cell_fault = 0;
-
 			}
 		}
 
@@ -271,14 +261,9 @@ static THD_FUNCTION(charge_discharge_thd,p){
 			}
 			flag_temp_OT_cell_fault = 1;
 			allow_ot_cell_fault_clear = 0;
-			balance_prev_state_temp = backup.config.balance_mode; // store previous balance mode
-			backup.config.balance_mode = BALANCE_MODE_DISABLED; // force disable balance until the temp is acceptable
 			blink_count = 0;
 		} else {
 			if( allow_ot_cell_fault_clear ) {
-				if( flag_temp_OT_cell_fault ) {
-					backup.config.balance_mode = balance_prev_state_temp;// restore balance mode if fault is cleared
-				}
 				flag_temp_OT_cell_fault = 0;
 			}
 		}
@@ -290,17 +275,8 @@ static THD_FUNCTION(charge_discharge_thd,p){
 			flag_temp_hardware_fault = 1;
 			allow_temp_hw_fault_clear = 0;
 			blink_count = 0;
-			if(flag_OV_fault == 0){
-				balance_prev_state_temp = backup.config.balance_mode; // store previous balance mode
-			} else {
-				balance_prev_state_temp = balance_prev_state;
-			}
-			backup.config.balance_mode = BALANCE_MODE_DISABLED; // force disable balance until the temp is acceptable
 		} else {
 			if(allow_temp_hw_fault_clear) {
-				if( flag_temp_hardware_fault ) {
-					backup.config.balance_mode = balance_prev_state_temp;// restore balance mode if fault is cleared
-				}
 				flag_temp_hardware_fault = 0;
 			}
 		}
@@ -347,18 +323,11 @@ static THD_FUNCTION(charge_discharge_thd,p){
 		//check cell over voltage
 		if ( HW_OV_DETECTED() && (flag_OV_fault == 0) ) {
 			bms_if_fault_report(FAULT_CODE_CELL_OVERVOLTAGE);
-			if( flag_temp_hardware_fault == 0) { //if no hardware over temperature
-				balance_prev_state = backup.config.balance_mode; // store previous balance mode
-				backup.config.balance_mode = BALANCE_MODE_ALWAYS; // force balance
-			}
 			flag_OV_fault = 1;
 			allow_OV_fault_clear = 0;
 			blink_count = 0;
 		} else {
 			if( allow_OV_fault_clear == 1 ) {
-				if( flag_OV_fault ) {// if there was a fault, the balance mode was changed to always, must be restored
-					backup.config.balance_mode = balance_prev_state;// restore balance mode if fault is cleared
-				}
 				flag_OV_fault = 0;
 			}
 
@@ -660,7 +629,15 @@ static THD_FUNCTION(balance_thd, p) {
 			m_bal_ok = true;
 			break;
 		}
-
+#ifdef HW_BIDIRECTIONAL_SWITCH
+		if (flag_temp_OT_cell_fault || flag_temp_UT_cell_fault || flag_temp_hardware_fault || flag_UV_fault ) { // if any temp fault or UV
+			m_bal_ok = false;																					// force disable balance
+		}else{
+			if(flag_OV_fault){
+				m_bal_ok = true;	// if no temp fault and OV fault force balance
+			}
+		}
+#endif
 		for (int i = backup.config.cell_first_index;i <
 		(backup.config.cell_num + backup.config.cell_first_index);i++) {
 			if (HW_LAST_CELL_VOLTAGE(i) > v_max) {
