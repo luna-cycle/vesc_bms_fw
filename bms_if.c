@@ -1230,7 +1230,35 @@ bms_fault_code bms_if_fault_now(void) {
 	if (m_was_charge_overcurrent) {
 		res = FAULT_CODE_CHARGE_OVERCURRENT;
 	}
-
+#ifdef HW_BIDIRECTIONAL_SWITCH
+	if (flag_temp_Vreg_fault) {
+		res = FAULT_CODE_VREG_OVERTEMP;
+	}
+	if (flag_temp_OT_cell_fault) {
+		res = FAULT_CODE_CELL_OVERTEMP;
+	}
+	if (flag_temp_UT_cell_fault) {
+		res = FAULT_CODE_CELL_UNDERTEMP;
+	}
+	if (flag_temp_hardware_fault) {
+		res = FAULT_CODE_HARDWARE_OVERTEMP;
+	}
+	if (flag_I_charge_fault) {
+		res = FAULT_CODE_CHARGE_OVERCURRENT;
+	}
+	if (flag_OC_discharge_fault) {
+		res = FAULT_CODE_DISCHARGE_OVERCURRENT;
+	}
+	if (flag_SC_discharge_fault) {
+		res = FAULT_CODE_DISCHARGE_SHORT_CIRCUIT;
+	}
+	if (flag_UV_fault) {
+		res = FAULT_CODE_CELL_OVERVOLTAGE;
+	}
+	if (flag_OV_fault) {
+		res = FAULT_CODE_CELL_OVERVOLTAGE;
+	}
+#endif
 	return res;
 }
 
