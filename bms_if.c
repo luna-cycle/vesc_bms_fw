@@ -594,6 +594,8 @@ static THD_FUNCTION(balance_thd, p) {
 	while (!chThdShouldTerminateX()) {
 		float v_min = 10.0;
 		float v_max = 0.0;
+		float balance_end = 0.0;
+		float balance_start = 0.0;
 
 		// Allow some time to start balancing after unplugging the charger. This is useful if it is unplugged
 		// while the current was so high that balancing was prevented.
@@ -629,15 +631,7 @@ static THD_FUNCTION(balance_thd, p) {
 			m_bal_ok = true;
 			break;
 		}
-#ifdef HW_BIDIRECTIONAL_SWITCH
-		if (flag_temp_OT_cell_fault || flag_temp_UT_cell_fault || flag_temp_hardware_fault || flag_UV_fault ) { // if any temp fault or UV
-			m_bal_ok = false;																					// force disable balance
-		}else{
-			if(flag_OV_fault){
-				m_bal_ok = true;	// if no temp fault and OV fault force balance
-			}
-		}
-#endif
+
 		for (int i = backup.config.cell_first_index;i <
 		(backup.config.cell_num + backup.config.cell_first_index);i++) {
 			if (HW_LAST_CELL_VOLTAGE(i) > v_max) {
@@ -647,7 +641,21 @@ static THD_FUNCTION(balance_thd, p) {
 				v_min = HW_LAST_CELL_VOLTAGE(i);
 			}
 		}
+		
+		balance_end = backup.config.vc_balance_end;
+		balance_start = backup.config.vc_balance_start;
 
+#ifdef HW_BIDIRECTIONAL_SWITCH
+		if (flag_temp_OT_cell_fault || flag_temp_UT_cell_fault || flag_temp_hardware_fault || flag_UV_fault ) { // if any temp fault or UV
+			m_bal_ok = false;																					// force disable balance
+		}else{
+			if(flag_OV_fault || (v_max >= 4.2)){ // OV fault could be detected by the AFE during MCU sleep
+				m_bal_ok = true;		// if no temp fault and OV fault or max cell above 4.2V force balance
+				balance_end = 0.01;		// config a smaller balance start and end limits to ensure
+				balance_start = 0.01;	// that the balance will be performed
+			}
+		}
+#endif
 		m_voltage_cell_min = v_min;
 		m_voltage_cell_max = v_max;
 		m_is_balancing = false;
@@ -683,7 +691,7 @@ static THD_FUNCTION(balance_thd, p) {
 			bal_ch = 0;
 			for (int i = backup.config.cell_first_index;i <
 			(backup.config.cell_num + backup.config.cell_first_index);i++) {
-				float limit = HW_GET_DSC(i) ? backup.config.vc_balance_end : backup.config.vc_balance_start;
+				float limit = HW_GET_DSC(i) ? balance_end : balance_start;
 				limit += v_min;
 
 				if (HW_LAST_CELL_VOLTAGE(i) >= limit) {
