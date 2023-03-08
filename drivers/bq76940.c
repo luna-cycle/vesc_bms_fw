@@ -171,7 +171,7 @@ uint8_t bq76940_init(void) {
 		error |= write_reg(BQ_PROTECT3, BQ_OV_DELAY_1s);
 		//UnderVoltage threshold
 		error |= write_reg(BQ_UV_TRIP, tripVoltage(HW_MIN_CELL));
-		error |= write_reg(BQ_PROTECT3, BQ_UV_DELAY_4s);
+		error |= write_reg(BQ_PROTECT3, BQ_UV_DELAY_1s);
 
 		// Overcurrent protection
 		error |= write_reg(BQ_PROTECT2, (CURRENT_72A | BQ_OCP_640ms ));

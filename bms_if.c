@@ -191,6 +191,7 @@ bool allow_ut_cell_fault_clear = 1;
 bool allow_temp_hw_fault_clear = 1;
 bool allow_temp_Vreg_fault_clear = 1;
 bool allow_OV_fault_clear = 1;
+bool allow_UV_fault_clear = 1;
 uint8_t oc_sc_count_attempt = 0;
 uint8_t oc_charge_count_attempt = 0;
 uint16_t timeout = 0;
@@ -199,6 +200,7 @@ static int blink = 0;
 static int blink_count = 0;
 float aux_temp_limit = 0.0;
 bool BMS_was_chargin = 0;
+systime_t  UV_timer = 0;
 static THD_FUNCTION(charge_discharge_thd,p){
 	(void)p;
 	chRegSetThreadName("Charge_Discharge");
@@ -314,10 +316,15 @@ static THD_FUNCTION(charge_discharge_thd,p){
 		//check cell under voltage
 		if ( HW_UV_DETECTED() && (flag_UV_fault == 0) ) {
 			bms_if_fault_report(FAULT_CODE_CELL_UNDERVOLTAGE);
+			allow_UV_fault_clear = 0;
 			flag_UV_fault = 1;
 			blink_count = 0;
+			UV_timer = chVTGetSystemTimeX();
 		} else {
-			flag_UV_fault = 0;
+			if( allow_UV_fault_clear == 1 ) {
+				flag_UV_fault = 0;
+				UV_timer = 0;
+			}
 		}
 
 		//check cell over voltage
@@ -506,6 +513,11 @@ static THD_FUNCTION(charge_discharge_thd,p){
 						HW_PACK_CONN_ONLY_CHARGE(true);// allow only charging
 						HW_PACK_CONNECT();//connect pack, the discharge will be disconnected
 
+						//UV time out
+						if(UTILS_AGE_S(UV_timer) > HW_UV_TIMEOUT){
+							HW_SHUT_DOWN();
+						}
+							
 						// check for in current
 						if(HW_GET_I_IN() > 0.1){// incoming current, pack is charging
 							HW_PACK_CONN_ONLY_CHARGE(false);// connect discharge and charge ports
@@ -534,6 +546,7 @@ static THD_FUNCTION(charge_discharge_thd,p){
 							}
 							HW_UV_RESTORE_FAULT(); // restore fault, back to normal mode
 							HW_PACK_CONN_ONLY_CHARGE(false);// allow charge and discharge
+							allow_UV_fault_clear = 1;
 						}
 					break;
 
@@ -1253,7 +1266,7 @@ bms_fault_code bms_if_fault_now(void) {
 		res = FAULT_CODE_DISCHARGE_SHORT_CIRCUIT;
 	}
 	if (flag_UV_fault) {
-		res = FAULT_CODE_CELL_OVERVOLTAGE;
+		res = FAULT_CODE_CELL_UNDERVOLTAGE;
 	}
 	if (flag_OV_fault) {
 		res = FAULT_CODE_CELL_OVERVOLTAGE;

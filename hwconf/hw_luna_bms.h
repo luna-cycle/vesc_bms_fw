@@ -49,6 +49,7 @@
 #define HW_MAX_CELL_TEMP_CHARG  backup.config.t_charge_max    //max cell temp during chargin
 #define HW_MAX_CELL_TEMP_DISCH  55.0    //max cell temp during discharge, TODO add this parameter in VESC_TOOL
 #define HW_FORCE_BALANCE_V      4.2     //force balance if any cell is above this voltage [V]
+#define HW_UV_TIMEOUT           10.0    //if UV is manteined during this amount of time, enter in ship mode [s]
 // Macros
 #define HW_INIT_HOOK()
 
@@ -84,6 +85,7 @@
 #define HW_UV_RESTORE_FAULT() 		bq_restore_uv_fault()
 #define HW_WAIT_AFE()				bq_semaphore()
 #define HW_PCB_TEMP()               bms_if_get_vreg_temp()
+#define HW_SHUT_DOWN()              bq_shutdown_bq76940()
 
 // Settings
 #define HW_ADC_TEMP_SENSORS		8
