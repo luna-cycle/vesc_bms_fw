@@ -44,11 +44,11 @@
 #define RECONNECTION_TIMEOUT	3		// seconds to wait before reconnection attempt
 #define HW_MIN_CELL				2.6		//min cell voltage [V]
 #define HW_HYSTEREIS_MIN_CELL	0.05	//min cell hysteresis to clear undervoltage [V]
-#define HW_MAX_CELL				4.2		//max cell voltage [V]
+#define HW_MAX_CELL				4.25	//max cell voltage [V]
 #define HW_HYSTEREIS_MAX_CELL	0.05	//max cell hysteresis to clear undervoltage [V]
 #define HW_MAX_CELL_TEMP_CHARG  backup.config.t_charge_max    //max cell temp during chargin
 #define HW_MAX_CELL_TEMP_DISCH  55.0    //max cell temp during discharge, TODO add this parameter in VESC_TOOL
-
+#define HW_FORCE_BALANCE_V      4.2     //force balance if any cell is above this voltage [V]
 // Macros
 #define HW_INIT_HOOK()
 
