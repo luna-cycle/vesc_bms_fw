@@ -201,6 +201,14 @@
 #define HW_FORCE_BALANCE_V      4.2 //force balance if any cell is above this voltage [V]
 #endif
 
+#ifndef HW_UV_TIMEOUT
+#define HW_UV_TIMEOUT           10.0    //if UV is manteined during this amount of time, enter in ship mode [s]
+#endif
+
+#ifndef HW_SHUT_DOWN
+#define HW_SHUT_DOWN()          __NOP()
+#endif
+
 // Functions
 uint8_t hw_id_from_uuid(void);
 
