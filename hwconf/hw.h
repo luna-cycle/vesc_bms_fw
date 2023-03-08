@@ -197,6 +197,10 @@
 #define HW_TEMP_CELLS_MIN()     0.0 
 #endif
 
+#ifndef HW_FORCE_BALANCE_V
+#define HW_FORCE_BALANCE_V      4.2 //force balance if any cell is above this voltage [V]
+#endif
+
 // Functions
 uint8_t hw_id_from_uuid(void);
 
