@@ -21,7 +21,7 @@
 #define HWCONF_HW_LUNA_BMS_H_
 
 #include "bq76940.h"
-
+#include "conf_luna_bms.h"
 #define HW_NAME					"luna_bms"
 
 // HW-specific

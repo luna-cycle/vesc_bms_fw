@@ -664,8 +664,8 @@ static THD_FUNCTION(balance_thd, p) {
 		}else{
 			if(flag_OV_fault || (v_max >= HW_FORCE_BALANCE_V)){ // OV fault could be detected by the AFE during MCU sleep
 				m_bal_ok = true;		// if no temp fault and OV fault or max cell above 4.2V force balance
-				balance_end = 0.001;		// config a smaller balance start and end limits to ensure
-				balance_start = 0.001;	// that the balance will be performed
+				balance_end = 0.010;	// config a smaller balance start and end limits to ensure
+				balance_start = 0.015;	// that the balance will be performed
 			}
 		}
 #endif
