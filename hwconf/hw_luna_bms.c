@@ -158,7 +158,6 @@ static THD_FUNCTION(precharge_thread, arg) {
 
 	while ( !chThdShouldTerminateX() ) {
 
-
 		precharge_temp = 0;//pwr_get_adc_ch16(); // todo: temp transfer function
 
 		if( bms_if_get_bms_state() != BMS_FAULT ) {
@@ -169,7 +168,8 @@ static THD_FUNCTION(precharge_thread, arg) {
 					bq_allow_discharge(false);
 					PRECHARGE_ON();
 					chThdSleepMilliseconds(1);// time to ADC convert
-					precharge_current = 1;//pwr_get_adc_ch1() * 0.5; // V to I // commented, until the hardware is finished
+					precharge_current = pwr_get_adc_ch1() * 0.5; // V to I // commented, until the hardware is finished
+
 					if ( precharge_current > (PRECHARGE_CURRENT_THRESHOLD *0.5) && precharge_temp < PRECHARGE_TEMP_MAX ) {
 						PRECHARGE_STATUS = WAIT_CURRENT_THRESHOLD;
 					} else {
@@ -181,7 +181,7 @@ static THD_FUNCTION(precharge_thread, arg) {
 
 				case WAIT_CURRENT_THRESHOLD:
 					chThdSleepMilliseconds(1);// time to ADC convert
-					precharge_current = 0;//pwr_get_adc_ch1() * 0.5; // V to I // commented, until the hardware is finished
+					precharge_current = pwr_get_adc_ch1() * 0.5; // V to I // commented, until the hardware is finished
 					if( precharge_current < PRECHARGE_CURRENT_THRESHOLD && precharge_temp < PRECHARGE_TEMP_MAX ) {
 						PRECHARGE_STATUS = WAIT_FOR_IDLE;
 					} else {
@@ -199,6 +199,9 @@ static THD_FUNCTION(precharge_thread, arg) {
 					} else {
 						if ( precharge_temp >= PRECHARGE_TEMP_MAX ) {
 							PRECHARGE_STATUS = TEMP_FAULT;
+						}
+						if(bms_if_get_bms_state() == (BMS_CHARGING || BMS_DISCHARGIN)){
+							PRECHARGE_OFF();
 						}
 					}
 				break;
