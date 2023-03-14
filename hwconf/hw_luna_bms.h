@@ -171,8 +171,6 @@
 #define BQ76940_SCL_PIN			10
 #define BQ76940_ALERT_GPIO		GPIOA
 #define BQ76940_ALERT_PIN		2
-#define BQ76940_LRD_GPIO		GPIOB
-#define BQ76940_LRD_PIN			0
 
 // Analog
 
@@ -231,7 +229,7 @@
 #define ADC_PRECHARGE_I_LINE			PAL_LINE(GPIOC, 0)
 #define ADC_PRECH_RES_TEMP_LINE			PAL_LINE(GPIOB, 1)
 #define PRECHARGE_ENABLE_LINE			PAL_LINE(GPIOB, 0)
-#define PRECHARGE_CURRENT_THRESHOLD 	0.6 // [A] //Originally is 0.1 but here the MCU into Stand by mode with this value!
+#define PRECHARGE_CURRENT_THRESHOLD 	0.1 // [A] //Originally is 0.1 but here the MCU into Stand by mode with this value!
 #define PRECHARGE_TEMP_MAX 				70.0 // precharge resistor temp [�C]
 #define PRECHARGE_TEMP_HYST				0.8	// precharge temp hysteresis
 #define PRECHARGE_ON()					palClearLine(PRECHARGE_ENABLE_LINE)

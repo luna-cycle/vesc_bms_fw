@@ -28,7 +28,7 @@
 static void terminal_cmd_shipmode(int argc, const char **argv);
 static void terminal_cmd_connect(int argc, const char **argv);
 
-static THD_WORKING_AREA(precharge_thread_wa, 512);
+static THD_WORKING_AREA(precharge_thread_wa, 1024);
 static THD_FUNCTION(precharge_thread, arg);
 
 void hw_luna_init(void){
@@ -42,9 +42,12 @@ void hw_luna_init(void){
 	palSetLineMode(ADC_PRECHARGE_I_LINE, PAL_MODE_INPUT_ANALOG);    // hardware under process, uncomment for hardware V3
 	palSetLineMode(ADC_PRECH_RES_TEMP_LINE, PAL_MODE_INPUT_ANALOG);
 	palSetLineMode(PRECHARGE_ENABLE_LINE, PAL_MODE_OUTPUT_PUSHPULL);
-	//PWR->PUCRB |= PWR_PUCRB_PB0; //PB0 (precharge pin pull up during standby
-	//PWR->CR3 |= PWR_CR3_APC;	// apply pull up configuration
-	chThdCreateStatic(precharge_thread_wa, sizeof(precharge_thread_wa), NORMALPRIO +3 , precharge_thread, NULL);
+	PWR->PUCRC |= PWR_PUCRC_PC13; //wkp2 pin (PC13) pull up
+	PWR->PDCRB |= PWR_PDCRB_PB0; //PB0 precharge pin pull down during standby
+	PWR->CR3 |= PWR_CR3_APC;	// apply pull down configuration
+
+	chThdCreateStatic(precharge_thread_wa, sizeof(precharge_thread_wa), NORMALPRIO + 3 , precharge_thread, NULL);
+
 }
 
 float hw_luna_get_cell_temp_max(void) {
@@ -140,25 +143,24 @@ float hw_luna_get_connector_temp(){// return the higest temperature between conn
 	return temp_aux;
 }
 
-float precharge_current = 0;
-float precharge_temp = 0;
-bool flag_precharge_temp = 0;
-bool flag_precharge_OK = 0;
 enum {
 	WAIT_DISCHARGE = 0,
 	WAIT_CURRENT_THRESHOLD,
 	WAIT_FOR_IDLE,
 	TEMP_FAULT
-};
+	};
+
+float precharge_current = 0.0;
+float precharge_temp = 0.0;
 int PRECHARGE_STATUS = WAIT_DISCHARGE;
 uint16_t precharge_timeout;
+
 static THD_FUNCTION(precharge_thread, arg) {
 	(void)arg;
 	chRegSetThreadName("PRECHARGE_MONITOR");
-
 	while ( !chThdShouldTerminateX() ) {
-
-		precharge_temp = 0;//pwr_get_adc_ch16(); // todo: temp transfer function
+		chThdSleepMilliseconds(1);// time to ADC convert
+		precharge_temp = NTC_TEMP(pwr_get_adc_ch16());
 
 		if( bms_if_get_bms_state() != BMS_FAULT ) {
 
@@ -167,49 +169,52 @@ static THD_FUNCTION(precharge_thread, arg) {
 				case WAIT_DISCHARGE:
 					bq_allow_discharge(false);
 					PRECHARGE_ON();
-					chThdSleepMilliseconds(1);// time to ADC convert
 					precharge_current = pwr_get_adc_ch1() * 0.5; // V to I // commented, until the hardware is finished
 
 					if ( precharge_current > (PRECHARGE_CURRENT_THRESHOLD *0.5) && precharge_temp < PRECHARGE_TEMP_MAX ) {
 						PRECHARGE_STATUS = WAIT_CURRENT_THRESHOLD;
+						sleep_reset();
 					} else {
 						if ( precharge_temp >= PRECHARGE_TEMP_MAX ) {
 							PRECHARGE_STATUS = TEMP_FAULT;
+							bq_allow_discharge(false);
+							PRECHARGE_OFF();
 						}
 					}
 				break;
 
 				case WAIT_CURRENT_THRESHOLD:
-					chThdSleepMilliseconds(1);// time to ADC convert
 					precharge_current = pwr_get_adc_ch1() * 0.5; // V to I // commented, until the hardware is finished
 					if( precharge_current < PRECHARGE_CURRENT_THRESHOLD && precharge_temp < PRECHARGE_TEMP_MAX ) {
 						PRECHARGE_STATUS = WAIT_FOR_IDLE;
+						bq_allow_discharge(true);
+						///bq_discharge_enable();
+						PRECHARGE_OFF();
 					} else {
 						if ( precharge_temp >= PRECHARGE_TEMP_MAX ) {
 							PRECHARGE_STATUS = TEMP_FAULT;
+							bq_allow_discharge(false);
+							PRECHARGE_OFF();
 						}
 					}
 				break;
 
 				case WAIT_FOR_IDLE:
-					bq_allow_discharge(true);
 					chThdSleepMilliseconds(300); // wait for bms to detect the discarging and change state
 					if( bms_if_get_bms_state() == BMS_IDLE && precharge_temp < PRECHARGE_TEMP_MAX ) {
 						PRECHARGE_STATUS = WAIT_DISCHARGE;
+						bq_allow_discharge(false);
+						PRECHARGE_ON();
 					} else {
 						if ( precharge_temp >= PRECHARGE_TEMP_MAX ) {
-							PRECHARGE_STATUS = TEMP_FAULT;
-						}
-						if(bms_if_get_bms_state() == (BMS_CHARGING || BMS_DISCHARGIN)){
+							PRECHARGE_STATUS = TEMP_FAULT;					
+							bq_allow_discharge(false);
 							PRECHARGE_OFF();
 						}
 					}
 				break;
 
 				case TEMP_FAULT:
-					bq_allow_discharge(false);
-					PRECHARGE_OFF();
-					sleep_reset();
 					for ( precharge_timeout = (RECONNECTION_TIMEOUT * 10) ; precharge_timeout > 0 ; precharge_timeout-- ) {
 						chThdSleepMilliseconds(100);
 						sleep_reset();
@@ -224,10 +229,12 @@ static THD_FUNCTION(precharge_thread, arg) {
 			while(bms_if_get_bms_state() == BMS_FAULT) {// the pre charge must not interfiere in the fault handle
 				PRECHARGE_OFF(); // the precahrge must be off in order to let the AFE to detect for example a short chircuit
 				bq_allow_discharge(true); // let the AFE to decide if connect or not
-				PRECHARGE_STATUS = WAIT_DISCHARGE; // when the bms recovers from the fault, return to the wait for discharge state
 				chThdSleepMilliseconds(300); // let time to the AFE and charge_discharge task to handle the fault
 										// the AFE thread will be executed after 250ms (worst case)
 			}
+			PRECHARGE_STATUS = WAIT_DISCHARGE; // when the bms recovers from the fault, return to the wait for discharge state
+			PRECHARGE_ON();
+			bq_allow_discharge(false);
 		}
 	}
 }

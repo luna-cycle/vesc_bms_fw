@@ -85,6 +85,7 @@ static void go_to_sleep(void) {
 	PWR->CR1 |= PWR_CR1_LPMS_STANDBY;
 	PWR->CR3 |= PWR_CR3_RRS; // Keep ram4 during standby
 #ifdef	HW_USE_WKP2
+	PWR->CR4 |= PWR_CR4_WP2;
 	PWR->CR3 |= PWR_CR3_EWUP2;
 	PWR->SCR |= PWR_SCR_CWUF; // clear wkp flags
 #endif

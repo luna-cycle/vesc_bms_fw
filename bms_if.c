@@ -393,10 +393,10 @@ static THD_FUNCTION(charge_discharge_thd,p){
 		}
 
 		// check current direction
-		if ( (HW_GET_I_IN() > 0.03) && (FAULT_CODE == FAULT_CODE_NONE) ) {// incoming current, pack is charging
+		if ( (HW_GET_I_IN() > 0.05) && (FAULT_CODE == FAULT_CODE_NONE) ) {// incoming current, pack is charging
 			BMS_state = BMS_CHARGING;
 		} else {
-			if ( (HW_GET_I_IN() < -0.03) && (FAULT_CODE == FAULT_CODE_NONE) ) { // out going current, pack is dischargin
+			if ( (HW_GET_I_IN() < -0.05) && (FAULT_CODE == FAULT_CODE_NONE) ) { // out going current, pack is dischargin
 				BMS_state = BMS_DISCHARGIN;
 			} else {
 				if ( FAULT_CODE != FAULT_CODE_NONE ) {
