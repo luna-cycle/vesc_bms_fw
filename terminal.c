@@ -117,6 +117,10 @@ void terminal_process_string(char *str) {
 				commands_printf("Temp PCB         : %.1f degC", (double)fault_vec[i].temp_pcb);
 				commands_printf("V Cell Min       : %.3f V", (double)fault_vec[i].v_cell_min);
 				commands_printf("V Cell Max       : %.3f V", (double)fault_vec[i].v_cell_max);
+#ifdef USE_PRECHARGE
+				commands_printf("Precharge temp   : %.3f degC", (double)fault_vec[i].prech_temp);
+				commands_printf("Precharge current: %.3f A", (double)fault_vec[i].prech_current);
+#endif
 				commands_printf(" ");
 			}
 		}
