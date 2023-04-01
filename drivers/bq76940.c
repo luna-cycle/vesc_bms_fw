@@ -264,14 +264,21 @@ void bq76940_Alert_handler(void) {
 	
 	// Every 1 second make the long read
 	static uint8_t i = 0;
-
-	if( i++ == 4 ) {
+	//Here I'll select the sequence of no balance, measure, and then balance.
+	if( i == 6 ){ //>1,5 seconds -> no balance
+		write_reg(BQ_CELLBAL1, 0x00);
+		write_reg(BQ_CELLBAL2, 0x00);
+		write_reg(BQ_CELLBAL3, 0x00);		
+	}
+	if ( i++ == 10 ){	//>2,5 seconds -> measure
 		read_cell_voltages(m_v_cell); 	//read cell voltages
-		read_v_batt(&bq76940->pack_mv);
-		bq_balance_cells(m_discharge_state);	//configure balancing bits over i2c
+		read_v_batt(&bq76940->pack_mv);		
 		i = 0;
 	}
-
+	if( i <= 3 ){ //<1 seconds -> balance
+		bq_balance_cells(m_discharge_state);	//configure balancing bits over i2c
+	}
+	
 	//read external temp for 2.5 sec, then internal temp for 2.5sec and repeat
 	static uint8_t temp_sensing_state = 1;
 	if( temp_sensing_state == 0 ) {

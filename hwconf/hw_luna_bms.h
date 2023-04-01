@@ -227,6 +227,9 @@
 #define ADC_CH_TEMP5			ADC_CHANNEL_IN2  // Positive Connector terminal temp
 #define ADC_CH_TEMP6			ADC_CHANNEL_IN4  // MOSFET temp
 
+//	Charger Detection
+#define LINE_CHG_DETECTION		PAL_LINE(GPIOB, 3)
+
 void hw_luna_init(void);
 float hw_luna_get_temp(int sensors);
 float hw_luna_get_cell_temp_max(void);
