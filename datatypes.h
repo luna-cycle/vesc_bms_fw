@@ -291,7 +291,13 @@ typedef enum {
 	FAULT_CODE_DONT_INIT_AFE,
 	FAULT_CODE_NON_RESPONSE_AFE,
 	FAULT_CODE_HARDWARE_OVERTEMP,
+#ifdef USE_PRECHARGE
+	FAULT_CODE_VREG_OVERTEMP,
+	FAULT_CODE_PRECH_OT,
+	FAULT_CODE_PRECH_OC
+#else
 	FAULT_CODE_VREG_OVERTEMP
+#endif
 } bms_fault_code;
 
 // Logged fault data
@@ -306,6 +312,10 @@ typedef struct {
 	float v_cell_min;
 	float v_cell_max;
 	float pcb_humidity;
+#ifdef USE_PRECHARGE
+	float prech_temp;
+	float prech_current;
+#endif
 } fault_data;
 
 // CAN commands

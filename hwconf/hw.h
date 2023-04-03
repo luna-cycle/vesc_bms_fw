@@ -192,6 +192,15 @@
 #ifndef HW_WAIT_AFE
 #define HW_WAIT_AFE() 			__NOP();//null
 #endif
+
+#ifndef HW_GET_PRECH_TEMP
+#define HW_GET_PRECH_TEMP       0.0 //precharge temperature sensor [deg] 
+#endif
+
+#ifndef HW_GET_PRECH_TEMP
+#define HW_GET_PRECH_CURRENT    0.0 //precharge current monitor [A]
+#endif
+
 // Functions
 uint8_t hw_id_from_uuid(void);
 

@@ -39,6 +39,7 @@ void hw_luna_init(void){
 	terminal_register_command_callback("Connect", "Connect=turn on big mosfets", 0, terminal_cmd_connect);
 
 	// Config precharge pins
+	PRECHARGE_ON();
 	palSetLineMode(ADC_PRECHARGE_I_LINE, PAL_MODE_INPUT_ANALOG);    // hardware under process, uncomment for hardware V3
 	palSetLineMode(ADC_PRECH_RES_TEMP_LINE, PAL_MODE_INPUT_ANALOG);
 	palSetLineMode(PRECHARGE_ENABLE_LINE, PAL_MODE_OUTPUT_PUSHPULL);
@@ -143,88 +144,169 @@ float hw_luna_get_connector_temp(){// return the higest temperature between conn
 	return temp_aux;
 }
 
+float hw_luna_get_precharge_current(){
+	return pwr_get_adc_ch1() * 0.5;
+}
+
 enum {
-	WAIT_DISCHARGE = 0,
-	WAIT_CURRENT_THRESHOLD,
-	WAIT_FOR_IDLE,
-	TEMP_FAULT
+	PRECH_IDLE = 0,
+	PRECH_WAIT_DISCHARGE,
+	PRECH_WAIT_CURRENT_THRESHOLD,
+	PRECH_WAIT_FOR_IDLE,
+	PRECH_TEMP_FAULT,
+	PRECH_OC_FAULT
 	};
 
 float precharge_current = 0.0;
 float precharge_temp = 0.0;
-int PRECHARGE_STATUS = WAIT_DISCHARGE;
-uint16_t precharge_timeout;
+int PRECHARGE_STATUS = PRECH_IDLE;
+systime_t prech_thresold_time = 0;
+uint16_t precharge_reconnect_timeout = 0;
+uint8_t precharge_reconnect_atempt = 0;
 
 static THD_FUNCTION(precharge_thread, arg) {
 	(void)arg;
 	chRegSetThreadName("PRECHARGE_MONITOR");
+
+	PRECHARGE_ON();
+	bq_allow_discharge(false);
+
 	while ( !chThdShouldTerminateX() ) {
 		chThdSleepMilliseconds(1);// time to ADC convert
-		precharge_temp = NTC_TEMP(pwr_get_adc_ch16());
-
+		
+		precharge_temp = HW_GET_PRECH_TEMP();
+		precharge_current = HW_GET_PRECH_CURRENT();//commands_printf("temp: %f",precharge_temp);commands_printf("current: %f \n",(pwr_get_adc_ch1() * 0.5));
+			
 		if( bms_if_get_bms_state() != BMS_FAULT ) {
 
 			switch(PRECHARGE_STATUS) {
 
-				case WAIT_DISCHARGE:
-					bq_allow_discharge(false);
-					PRECHARGE_ON();
-					precharge_current = pwr_get_adc_ch1() * 0.5; // V to I // commented, until the hardware is finished
+				case PRECH_IDLE:
 
-					if ( precharge_current > (PRECHARGE_CURRENT_THRESHOLD *0.5) && precharge_temp < PRECHARGE_TEMP_MAX ) {
-						PRECHARGE_STATUS = WAIT_CURRENT_THRESHOLD;
+					if ( precharge_current > PRECHARGE_CURRENT_THRESHOLD && precharge_temp < PRECHARGE_TEMP_MAX 
+					&& precharge_current < PRECHARGE_OC) {
+						prech_thresold_time = chVTGetSystemTimeX();
+						PRECHARGE_STATUS = PRECH_WAIT_DISCHARGE;
 						sleep_reset();
+						
 					} else {
 						if ( precharge_temp >= PRECHARGE_TEMP_MAX ) {
-							PRECHARGE_STATUS = TEMP_FAULT;
+							PRECHARGE_STATUS = PRECH_TEMP_FAULT;
 							bq_allow_discharge(false);
 							PRECHARGE_OFF();
+							bms_if_fault_report(FAULT_CODE_PRECH_OT);
+						} else {
+							if ( precharge_current >= PRECHARGE_OC ) {
+								PRECHARGE_STATUS = PRECH_OC_FAULT;
+								bq_allow_discharge(false);LED_ON(LINE_LED_RED);
+								PRECHARGE_OFF();
+								bms_if_fault_report(FAULT_CODE_PRECH_OC);
+							}
 						}
 					}
+										
 				break;
 
-				case WAIT_CURRENT_THRESHOLD:
-					precharge_current = pwr_get_adc_ch1() * 0.5; // V to I // commented, until the hardware is finished
-					if( precharge_current < PRECHARGE_CURRENT_THRESHOLD && precharge_temp < PRECHARGE_TEMP_MAX ) {
-						PRECHARGE_STATUS = WAIT_FOR_IDLE;
+				case PRECH_WAIT_DISCHARGE:
+
+					sleep_reset();
+					if( UTILS_AGE_S(prech_thresold_time) > PRECHARGE_TIMEOUT && precharge_temp < PRECHARGE_TEMP_MAX 
+					&& precharge_current < PRECHARGE_OC) {
+						PRECHARGE_STATUS = PRECH_WAIT_FOR_IDLE;
 						bq_allow_discharge(true);
-						///bq_discharge_enable();
-						PRECHARGE_OFF();
 					} else {
 						if ( precharge_temp >= PRECHARGE_TEMP_MAX ) {
-							PRECHARGE_STATUS = TEMP_FAULT;
+							PRECHARGE_STATUS = PRECH_TEMP_FAULT;
 							bq_allow_discharge(false);
 							PRECHARGE_OFF();
+							bms_if_fault_report(FAULT_CODE_PRECH_OT);
+						} else {
+							if ( precharge_current >= PRECHARGE_OC ) {
+								PRECHARGE_STATUS = PRECH_OC_FAULT;
+								bq_allow_discharge(false);
+								PRECHARGE_OFF();
+								bms_if_fault_report(FAULT_CODE_PRECH_OC);
+							}	
 						}
 					}
 				break;
 
-				case WAIT_FOR_IDLE:
+				case PRECH_WAIT_FOR_IDLE:
+
 					chThdSleepMilliseconds(300); // wait for bms to detect the discarging and change state
-					if( bms_if_get_bms_state() == BMS_IDLE && precharge_temp < PRECHARGE_TEMP_MAX ) {
-						PRECHARGE_STATUS = WAIT_DISCHARGE;
-						bq_allow_discharge(false);
-						PRECHARGE_ON();
+					if( bms_if_get_bms_state() == BMS_IDLE && precharge_temp < PRECHARGE_TEMP_MAX 
+					&& precharge_current < PRECHARGE_OC) {
+						PRECHARGE_STATUS = PRECH_IDLE;
+						bq_allow_discharge(false);			
 					} else {
 						if ( precharge_temp >= PRECHARGE_TEMP_MAX ) {
-							PRECHARGE_STATUS = TEMP_FAULT;					
+							PRECHARGE_STATUS = PRECH_TEMP_FAULT;
 							bq_allow_discharge(false);
 							PRECHARGE_OFF();
+							bms_if_fault_report(FAULT_CODE_PRECH_OT);
+						} else {
+							if ( precharge_current >= PRECHARGE_OC ) {
+								PRECHARGE_STATUS = PRECH_OC_FAULT;
+								bq_allow_discharge(false);
+								PRECHARGE_OFF();
+								bms_if_fault_report(FAULT_CODE_PRECH_OC);
+							}
 						}
 					}
 				break;
 
-				case TEMP_FAULT:
-					for ( precharge_timeout = (RECONNECTION_TIMEOUT * 10) ; precharge_timeout > 0 ; precharge_timeout-- ) {
-						chThdSleepMilliseconds(100);
-						sleep_reset();
-					}
+				case PRECH_TEMP_FAULT:
+										
 					if(precharge_temp < (PRECHARGE_TEMP_MAX * PRECHARGE_TEMP_HYST)) {
-						PRECHARGE_STATUS = WAIT_DISCHARGE;
+						PRECHARGE_STATUS = PRECH_IDLE;
+						PRECHARGE_ON();
 					}
+
+					for ( precharge_reconnect_timeout = (RECONNECTION_TIMEOUT * 10) ; precharge_reconnect_timeout > 0 ; 
+						precharge_reconnect_timeout-- ) {
+						sleep_reset();
+						chThdSleepMilliseconds(100);
+					}
+
+				break;
+
+				case PRECH_OC_FAULT:
+					
+					if(precharge_current < PRECHARGE_OC) {
+						PRECHARGE_STATUS = PRECH_IDLE;
+						PRECHARGE_ON();
+						precharge_reconnect_atempt = 0;
+					}
+
+					for ( precharge_reconnect_timeout = (RECONNECTION_TIMEOUT * 10) ; precharge_reconnect_timeout > 0 ; 
+						precharge_reconnect_timeout-- ) {
+						sleep_reset();
+						chThdSleepMilliseconds(100);
+					}
+
+					PRECHARGE_ON();
+					precharge_reconnect_atempt++;
+					
+					if(precharge_reconnect_atempt > 3){			
+						while(HW_LOAD_DETECTION()){			// if max attempt reached, wait for load removal. Is considered a
+							sleep_reset();					// critical fault so bms must be stay here until load
+							precharge_reconnect_atempt = 0;	// is removed.
+							chThdSleepMilliseconds(1000);	// if no load detection is implemented, the bms
+															//will continue to attempt connection every RECONNECTION_TIMEOUT
+						}
+					}
+
+				break;
+
+				default:
+					
+					PRECHARGE_STATUS = PRECH_TEMP_FAULT; // if uknow state, go to temp fault
+					bq_allow_discharge(false);
+					PRECHARGE_OFF();
+
 				break;
 			}
-
+			
 		} else {
 			while(bms_if_get_bms_state() == BMS_FAULT) {// the pre charge must not interfiere in the fault handle
 				PRECHARGE_OFF(); // the precahrge must be off in order to let the AFE to detect for example a short chircuit
@@ -232,7 +314,7 @@ static THD_FUNCTION(precharge_thread, arg) {
 				chThdSleepMilliseconds(300); // let time to the AFE and charge_discharge task to handle the fault
 										// the AFE thread will be executed after 250ms (worst case)
 			}
-			PRECHARGE_STATUS = WAIT_DISCHARGE; // when the bms recovers from the fault, return to the wait for discharge state
+			PRECHARGE_STATUS = PRECH_IDLE; // when the bms recovers from the fault, return to the wait for discharge state
 			PRECHARGE_ON();
 			bq_allow_discharge(false);
 		}

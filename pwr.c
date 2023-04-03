@@ -98,7 +98,7 @@ static THD_FUNCTION(adc_thd, p) {
 				temps[j] += samples[ADC_CHANNELS * i + 3 + j];
 			}
 
-			v_fuse += samples[ADC_CHANNELS * i + HW_ADC_TEMP_SENSORS + 3];// error here? v_fuse should be ADC_CHANNEL*1 + HW_ADC_TEMP_SENSORS + 4?
+			v_fuse += samples[ADC_CHANNELS * i + HW_ADC_TEMP_SENSORS + 3];
 		}
 
 		ref /= (float)num_samp;

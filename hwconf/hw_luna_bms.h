@@ -34,6 +34,7 @@
 #define HW_BIDIRECTIONAL_SWITCH
 #define HW_USE_WKP2
 #define ADC_CHANNELS 13
+#define USE_PRECHARGE
 
 #define HW_MAX_TEMP_IC 			75.0	// AFE temp [°C]
 #define HW_MAX_MOSFET_TEMP		75.0	// MOSFET TEMP [°C]
@@ -83,6 +84,8 @@
 #define HW_OV_RESTORE_FAULT()		bq_restore_ov_fault()
 #define HW_UV_RESTORE_FAULT() 		bq_restore_uv_fault()
 #define HW_WAIT_AFE()				bq_semaphore()
+#define HW_GET_PRECH_CURRENT()      hw_luna_get_precharge_current()
+#define HW_GET_PRECH_TEMP()         NTC_TEMP(pwr_get_adc_ch16())
 
 // Settings
 #define HW_ADC_TEMP_SENSORS		8// total temp sensors
@@ -229,9 +232,12 @@
 #define ADC_PRECHARGE_I_LINE			PAL_LINE(GPIOC, 0)
 #define ADC_PRECH_RES_TEMP_LINE			PAL_LINE(GPIOB, 1)
 #define PRECHARGE_ENABLE_LINE			PAL_LINE(GPIOB, 0)
-#define PRECHARGE_CURRENT_THRESHOLD 	0.1 // [A] //Originally is 0.1 but here the MCU into Stand by mode with this value!
-#define PRECHARGE_TEMP_MAX 				70.0 // precharge resistor temp [�C]
+#define PRECHARGE_CURRENT_THRESHOLD 	0.05 // [A]
+#define PRECHARGE_TEMP_MAX 				60.0 // precharge resistor temp [�C]
 #define PRECHARGE_TEMP_HYST				0.8	// precharge temp hysteresis
+#define PRECHARGE_TIMEOUT               0.1 // precharge time to open discharge [s]
+#define PRECHARGE_OC                    0.55 // precharge max current [A]
+#define PRECH_SHUNT                     0.5 // precharge currente shunt [ohm]
 #define PRECHARGE_ON()					palClearLine(PRECHARGE_ENABLE_LINE)
 #define PRECHARGE_OFF()					palSetLine(PRECHARGE_ENABLE_LINE)
 void hw_luna_init(void);
@@ -240,4 +246,5 @@ float hw_luna_get_cell_temp_max(void);
 float hw_luna_get_cell_temp_min(void);
 float hw_luna_get_bal_temp (void);
 float hw_luna_get_connector_temp(void);
+float hw_luna_get_precharge_current(void);
 #endif /* HWCONF_HW_LUNA_BMS_H_ */
