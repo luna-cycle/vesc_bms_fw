@@ -37,6 +37,7 @@ void hw_luna_init(void){
 	bq76940_init();
 	HW_SET_CAN_ENABLE_LINE();
 	HW_CAN_ON();
+	palSetLineMode(LINE_CHG_DETECTION, PAL_MODE_INPUT);
 	terminal_register_command_callback("shipmode", "Shipmode = turn off bq 76940", 0, terminal_cmd_shipmode);	
 	terminal_register_command_callback("Connect", "Connect=turn on big mosfets", 0, terminal_cmd_connect);
 #ifdef USE_PRECHARGE

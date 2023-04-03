@@ -21,7 +21,7 @@
 #define HWCONF_HW_LUNA_BMS_H_
 
 #include "bq76940.h"
-
+#include "conf_luna_bms.h"
 #define HW_NAME					"luna_bms"
 
 // HW-specific
@@ -47,11 +47,14 @@
 #define HW_HYSTERESIS_TEMP		5.0		// hysteresis to avoid reconnecto on temp fault [°C]
 #define MAX_RECONNECT_ATTEMPT 	3		// max reconnection attempt after a short circuit or overcurrent
 #define RECONNECTION_TIMEOUT	3		// seconds to wait before reconnection attempt
-#define HW_MIN_CELL				2.8		//min cell voltage [V]
+#define HW_MIN_CELL				2.6		//min cell voltage [V]
 #define HW_HYSTEREIS_MIN_CELL	0.05	//min cell hysteresis to clear undervoltage [V]
 #define HW_MAX_CELL				4.25	//max cell voltage [V]
 #define HW_HYSTEREIS_MAX_CELL	0.05	//max cell hysteresis to clear undervoltage [V]
-
+#define HW_MAX_CELL_TEMP_CHARG  backup.config.t_charge_max    //max cell temp during chargin
+#define HW_MAX_CELL_TEMP_DISCH  55.0    //max cell temp during discharge, TODO add this parameter in VESC_TOOL
+#define HW_FORCE_BALANCE_V      4.2     //force balance if any cell is above this voltage [V]
+#define HW_UV_TIMEOUT           10.0    //if UV is manteined during this amount of time, enter in ship mode [s]
 // Macros
 #define HW_INIT_HOOK()
 
@@ -90,6 +93,8 @@
 #define HW_GET_PRECH_CURRENT()      hw_luna_get_precharge_current()
 #define HW_GET_PRECH_TEMP()         NTC_TEMP(pwr_get_adc_ch16())
 #endif
+#define HW_PCB_TEMP()               bms_if_get_vreg_temp()
+#define HW_SHUT_DOWN()              bq_shutdown_bq76940()
 
 // Settings
 #define HW_ADC_TEMP_SENSORS		8// total temp sensors
@@ -255,6 +260,9 @@
 
 float hw_luna_get_precharge_current(void);
 #endif
+//	Charger Detection
+#define LINE_CHG_DETECTION		PAL_LINE(GPIOB, 3)
+
 void hw_luna_init(void);
 float hw_luna_get_temp(int sensors);
 float hw_luna_get_cell_temp_max(void);

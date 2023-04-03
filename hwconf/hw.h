@@ -201,6 +201,26 @@
 #define HW_GET_PRECH_CURRENT    0.0 //precharge current monitor [A]
 #endif
 
+#ifndef HW_PCB_TEMP
+#define HW_PCB_TEMP()           bms_if_get_temp(0)
+#endif
+
+#ifndef HW_TEMP_CELLS_MIN
+#define HW_TEMP_CELLS_MIN()     0.0 
+#endif
+
+#ifndef HW_FORCE_BALANCE_V
+#define HW_FORCE_BALANCE_V      4.2 //force balance if any cell is above this voltage [V]
+#endif
+
+#ifndef HW_UV_TIMEOUT
+#define HW_UV_TIMEOUT           10.0    //if UV is manteined during this amount of time, enter in ship mode [s]
+#endif
+
+#ifndef HW_SHUT_DOWN
+#define HW_SHUT_DOWN()          __NOP()
+#endif
+
 // Functions
 uint8_t hw_id_from_uuid(void);
 

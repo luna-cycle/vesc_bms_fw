@@ -112,9 +112,12 @@ void terminal_process_string(char *str) {
 				commands_printf("Fault Age        : %.1f s", (double)UTILS_AGE_S(fault_vec[i].fault_time));
 				commands_printf("Current          : %.1f A", (double)fault_vec[i].current);
 				commands_printf("Current IC       : %.1f A", (double)fault_vec[i].current_ic);
-				commands_printf("Temp Batt        : %.1f degC", (double)fault_vec[i].temp_batt);
+				commands_printf("Temp Cell max    : %.1f degC", (double)fault_vec[i].temp_batt);
+				commands_printf("Temp Cell min    : %.1f degC", (double)fault_vec[i].temp_batt_min);
 				commands_printf("Temp IC          : %.1f degC", (double)fault_vec[i].temp_ic);
 				commands_printf("Temp PCB         : %.1f degC", (double)fault_vec[i].temp_pcb);
+				commands_printf("Temp connectors  : %.1f degC", (double)fault_vec[i].temp_connector);
+				commands_printf("Temp mosfets     : %.1f degC", (double)fault_vec[i].temp_mosfets);
 				commands_printf("V Cell Min       : %.3f V", (double)fault_vec[i].v_cell_min);
 				commands_printf("V Cell Max       : %.3f V", (double)fault_vec[i].v_cell_max);
 #ifdef USE_PRECHARGE

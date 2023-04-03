@@ -316,6 +316,9 @@ typedef struct {
 	float prech_temp;
 	float prech_current;
 #endif
+	float temp_batt_min;
+	float temp_connector;
+	float temp_mosfets;
 } fault_data;
 
 // CAN commands
