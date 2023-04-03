@@ -33,8 +33,10 @@
 #define USE_AFE_WD
 #define HW_BIDIRECTIONAL_SWITCH
 #define HW_USE_WKP2
-#define ADC_CHANNELS 13
 #define USE_PRECHARGE
+#ifdef USE_PRECHARGE
+#define ADC_CHANNELS 13
+#endif
 
 #define HW_MAX_TEMP_IC 			75.0	// AFE temp [°C]
 #define HW_MAX_MOSFET_TEMP		75.0	// MOSFET TEMP [°C]
@@ -84,8 +86,10 @@
 #define HW_OV_RESTORE_FAULT()		bq_restore_ov_fault()
 #define HW_UV_RESTORE_FAULT() 		bq_restore_uv_fault()
 #define HW_WAIT_AFE()				bq_semaphore()
+#ifdef USE_PRECHARGE
 #define HW_GET_PRECH_CURRENT()      hw_luna_get_precharge_current()
 #define HW_GET_PRECH_TEMP()         NTC_TEMP(pwr_get_adc_ch16())
+#endif
 
 // Settings
 #define HW_ADC_TEMP_SENSORS		8// total temp sensors
@@ -192,13 +196,20 @@
 
 //CANbus
 #define HW_SET_CAN_ENABLE_LINE() palSetLineMode(LINE_CAN_EN, PAL_MODE_OUTPUT_PUSHPULL)
+#ifdef USE_PRECHARGE
 #define LINE_CAN_EN				PAL_LINE(GPIOB, 14)
+#else
+#define LINE_CAN_EN				PAL_LINE(GPIOB, 7)
+#endif
 #define HW_CAN_ON()				palSetLine(LINE_CAN_EN)
 #define HW_CAN_OFF()			palClearLine(LINE_CAN_EN)
 
 // Enable thermistor bank A
-#define LINE_TEMP_0_EN			/*PAL_LINE(GPIOB, 1)*/PAL_LINE(GPIOB, 2) // for hardware V3 LINE_TEMP_0_EN is PB2
-
+#ifdef USE_PRECHARGE
+#define LINE_TEMP_0_EN			PAL_LINE(GPIOB, 2) 
+#else
+#define LINE_TEMP_0_EN			PAL_LINE(GPIOB, 1)
+#endif
 // Enable thermistor bank B. All repeadted until we make it more abstract
 #define LINE_TEMP_1_EN			PAL_LINE(GPIOC, 2)
 #define LINE_TEMP_2_EN			PAL_LINE(GPIOC, 2)
@@ -225,6 +236,7 @@
 #define ADC_CH_TEMP4			ADC_CHANNEL_IN12 // Negative Connector terminal temp
 #define ADC_CH_TEMP5			ADC_CHANNEL_IN2  // Positive Connector terminal temp
 #define ADC_CH_TEMP6			ADC_CHANNEL_IN4  // MOSFET temp
+#ifdef USE_PRECHARGE 
 #define ADC_PRECHARGE_I			ADC_CHANNEL_IN1	// Precharge current
 #define ADC_PRECH_RES_TEMP		ADC_CHANNEL_IN16// Precharge resistor temp
 
@@ -240,11 +252,14 @@
 #define PRECH_SHUNT                     0.5 // precharge currente shunt [ohm]
 #define PRECHARGE_ON()					palClearLine(PRECHARGE_ENABLE_LINE)
 #define PRECHARGE_OFF()					palSetLine(PRECHARGE_ENABLE_LINE)
+
+float hw_luna_get_precharge_current(void);
+#endif
 void hw_luna_init(void);
 float hw_luna_get_temp(int sensors);
 float hw_luna_get_cell_temp_max(void);
 float hw_luna_get_cell_temp_min(void);
 float hw_luna_get_bal_temp (void);
 float hw_luna_get_connector_temp(void);
-float hw_luna_get_precharge_current(void);
+
 #endif /* HWCONF_HW_LUNA_BMS_H_ */

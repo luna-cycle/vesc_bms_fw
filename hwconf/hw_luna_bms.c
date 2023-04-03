@@ -28,8 +28,10 @@
 static void terminal_cmd_shipmode(int argc, const char **argv);
 static void terminal_cmd_connect(int argc, const char **argv);
 
+#ifdef USE_PRECHARGE
 static THD_WORKING_AREA(precharge_thread_wa, 1024);
 static THD_FUNCTION(precharge_thread, arg);
+#endif
 
 void hw_luna_init(void){
 	bq76940_init();
@@ -37,18 +39,24 @@ void hw_luna_init(void){
 	HW_CAN_ON();
 	terminal_register_command_callback("shipmode", "Shipmode = turn off bq 76940", 0, terminal_cmd_shipmode);	
 	terminal_register_command_callback("Connect", "Connect=turn on big mosfets", 0, terminal_cmd_connect);
-
+#ifdef USE_PRECHARGE
 	// Config precharge pins
 	PRECHARGE_ON();
-	palSetLineMode(ADC_PRECHARGE_I_LINE, PAL_MODE_INPUT_ANALOG);    // hardware under process, uncomment for hardware V3
+	palSetLineMode(ADC_PRECHARGE_I_LINE, PAL_MODE_INPUT_ANALOG);
 	palSetLineMode(ADC_PRECH_RES_TEMP_LINE, PAL_MODE_INPUT_ANALOG);
 	palSetLineMode(PRECHARGE_ENABLE_LINE, PAL_MODE_OUTPUT_PUSHPULL);
-	PWR->PUCRC |= PWR_PUCRC_PC13; //wkp2 pin (PC13) pull up
+
 	PWR->PDCRB |= PWR_PDCRB_PB0; //PB0 precharge pin pull down during standby
 	PWR->CR3 |= PWR_CR3_APC;	// apply pull down configuration
 
 	chThdCreateStatic(precharge_thread_wa, sizeof(precharge_thread_wa), NORMALPRIO + 3 , precharge_thread, NULL);
+#else
+	bq_allow_discharge(true); // if precharge is nor used, precharge condition have to be always true
+#endif
 
+#ifdef HW_USE_WKP2
+	PWR->PUCRC |= PWR_PUCRC_PC13; //wkp2 pin (PC13) pull up
+#endif
 }
 
 float hw_luna_get_cell_temp_max(void) {
@@ -144,6 +152,7 @@ float hw_luna_get_connector_temp(){// return the higest temperature between conn
 	return temp_aux;
 }
 
+#ifdef USE_PRECHARGE
 float hw_luna_get_precharge_current(){
 	return pwr_get_adc_ch1() * 0.5;
 }
@@ -175,7 +184,7 @@ static THD_FUNCTION(precharge_thread, arg) {
 		chThdSleepMilliseconds(1);// time to ADC convert
 		
 		precharge_temp = HW_GET_PRECH_TEMP();
-		precharge_current = HW_GET_PRECH_CURRENT();//commands_printf("temp: %f",precharge_temp);commands_printf("current: %f \n",(pwr_get_adc_ch1() * 0.5));
+		precharge_current = HW_GET_PRECH_CURRENT();
 			
 		if( bms_if_get_bms_state() != BMS_FAULT ) {
 
@@ -320,3 +329,4 @@ static THD_FUNCTION(precharge_thread, arg) {
 		}
 	}
 }
+#endif
