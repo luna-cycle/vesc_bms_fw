@@ -78,6 +78,10 @@ const char* utils_fault_to_string(bms_fault_code fault) {
 	case FAULT_CODE_NON_RESPONSE_AFE: return "FAULT_CODE_NON_RESPONSE_AFE"; break;
 	case FAULT_CODE_HARDWARE_OVERTEMP: return "FAULT_CODE_HARDWARE_OVERTEMP"; break;
 	case FAULT_CODE_VREG_OVERTEMP: return "FAULT_CODE_VREG_OVERTEMP"; break;
+#ifdef USE_PRECHARGE
+	case FAULT_CODE_PRECH_OT: return "FAULT_CODE_PRECHARGE_OVERTEMP"; break;
+	case FAULT_CODE_PRECH_OC: return "FAULT_CODE_PRECHARGE_OVER_CURRENT"; break;
+#endif
 	default: return "FAULT_UNKNOWN"; break;
 	}
 }

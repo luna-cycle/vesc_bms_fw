@@ -393,10 +393,10 @@ static THD_FUNCTION(charge_discharge_thd,p){
 		}
 
 		// check current direction
-		if ( (HW_GET_I_IN() > 0.03) && (FAULT_CODE == FAULT_CODE_NONE) ) {// incoming current, pack is charging
+		if ( (HW_GET_I_IN() > 0.05) && (FAULT_CODE == FAULT_CODE_NONE) ) {// incoming current, pack is charging
 			BMS_state = BMS_CHARGING;
 		} else {
-			if ( (HW_GET_I_IN() < -0.03) && (FAULT_CODE == FAULT_CODE_NONE) ) { // out going current, pack is dischargin
+			if ( (HW_GET_I_IN() < -0.05) && (FAULT_CODE == FAULT_CODE_NONE) ) { // out going current, pack is dischargin
 				BMS_state = BMS_DISCHARGIN;
 			} else {
 				if ( FAULT_CODE != FAULT_CODE_NONE ) {
@@ -1216,7 +1216,10 @@ void bms_if_fault_report(bms_fault_code fault) {
 	f.v_cell_min = bms_if_get_v_cell_min();
 	f.v_cell_max = bms_if_get_v_cell_max();
 	f.pcb_humidity = bms_if_get_humsens_hum_pcb();
-
+#ifdef USE_PRECHARGE
+	f.prech_temp = HW_GET_PRECH_TEMP();
+	f.prech_current = HW_GET_PRECH_CURRENT();
+#endif
 	terminal_add_fault_data(&f);
 
 	if (m_fault_cb)

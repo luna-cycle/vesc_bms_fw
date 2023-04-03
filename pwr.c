@@ -98,7 +98,7 @@ static THD_FUNCTION(adc_thd, p) {
 				temps[j] += samples[ADC_CHANNELS * i + 3 + j];
 			}
 
-			v_fuse += samples[ADC_CHANNELS * i + HW_ADC_TEMP_SENSORS + 3];// error here? v_fuse should be ADC_CHANNEL*1 + HW_ADC_TEMP_SENSORS + 4?
+			v_fuse += samples[ADC_CHANNELS * i + HW_ADC_TEMP_SENSORS + 3];
 		}
 
 		ref /= (float)num_samp;
@@ -192,9 +192,9 @@ static THD_FUNCTION(adc_thd, p) {
 				temps[j] += samples[ADC_CHANNELS * i + 3 + j];
 			}
 
-			v_fuse += samples[ADC_CHANNELS * i + HW_MCU_ADC_TEMP_SENSOR + 4];
-			adc_ch1 += samples[ADC_CHANNELS * i + HW_MCU_ADC_TEMP_SENSOR + 5];
-			adc_ch16 += samples[ADC_CHANNELS * i + HW_MCU_ADC_TEMP_SENSOR + 6];
+			v_fuse += samples[ADC_CHANNELS * i + HW_MCU_ADC_TEMP_SENSOR + 3];
+			adc_ch1 += samples[ADC_CHANNELS * i + HW_MCU_ADC_TEMP_SENSOR + 4];
+			adc_ch16 += samples[ADC_CHANNELS * i + HW_MCU_ADC_TEMP_SENSOR + 5];
 		}
 
 		ref /= (float)num_samp;
@@ -214,7 +214,7 @@ static THD_FUNCTION(adc_thd, p) {
 		m_i_in = -((3.3 * ((i_in / 4095.0))) - 1.65) * (1.0 / HW_SHUNT_AMP_GAIN) * (1.0 / backup.config.ext_shunt_res);
 		m_v_fuse = (v_fuse / (4095 / vdda)) * ((R_CHARGE_TOP + R_CHARGE_BOTTOM) / R_CHARGE_BOTTOM);
 		m_adc_ch1 = (adc_ch1 / (4095 / vdda));
-		m_adc_ch16 = (adc_ch16 / (4095 / vdda));
+		m_adc_ch16 = adc_ch16;
 		for (int j = 0;j < HW_MCU_ADC_TEMP_SENSOR;j++) {
 			m_temps[j] = NTC_TEMP_WITH_IND(temps[j], j);
 		}
