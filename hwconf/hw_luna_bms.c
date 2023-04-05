@@ -182,11 +182,11 @@ static THD_FUNCTION(precharge_thread, arg) {
 	bq_allow_discharge(false);
 
 	while ( !chThdShouldTerminateX() ) {
-		chThdSleepMilliseconds(1);// time to ADC convert
+		chThdSleepMilliseconds(5);// time to ADC convert
 		
 		precharge_temp = HW_GET_PRECH_TEMP();
 		precharge_current = HW_GET_PRECH_CURRENT();
-			
+
 		if( bms_if_get_bms_state() != BMS_FAULT ) {
 
 			switch(PRECHARGE_STATUS) {
@@ -208,7 +208,7 @@ static THD_FUNCTION(precharge_thread, arg) {
 						} else {
 							if ( precharge_current >= PRECHARGE_OC ) {
 								PRECHARGE_STATUS = PRECH_OC_FAULT;
-								bq_allow_discharge(false);LED_ON(LINE_LED_RED);
+								bq_allow_discharge(false);
 								PRECHARGE_OFF();
 								bms_if_fault_report(FAULT_CODE_PRECH_OC);
 							}
@@ -224,6 +224,7 @@ static THD_FUNCTION(precharge_thread, arg) {
 					&& precharge_current < PRECHARGE_OC) {
 						PRECHARGE_STATUS = PRECH_WAIT_FOR_IDLE;
 						bq_allow_discharge(true);
+						chThdSleepMilliseconds(500);
 					} else {
 						if ( precharge_temp >= PRECHARGE_TEMP_MAX ) {
 							PRECHARGE_STATUS = PRECH_TEMP_FAULT;
@@ -243,7 +244,6 @@ static THD_FUNCTION(precharge_thread, arg) {
 
 				case PRECH_WAIT_FOR_IDLE:
 
-					chThdSleepMilliseconds(300); // wait for bms to detect the discarging and change state
 					if( bms_if_get_bms_state() == BMS_IDLE && precharge_temp < PRECHARGE_TEMP_MAX 
 					&& precharge_current < PRECHARGE_OC) {
 						PRECHARGE_STATUS = PRECH_IDLE;
@@ -263,6 +263,8 @@ static THD_FUNCTION(precharge_thread, arg) {
 							}
 						}
 					}
+					chThdSleepMilliseconds(300); // wait for bms to detect the discarging and change state
+
 				break;
 
 				case PRECH_TEMP_FAULT:
@@ -297,7 +299,7 @@ static THD_FUNCTION(precharge_thread, arg) {
 					PRECHARGE_ON();
 					precharge_reconnect_atempt++;
 					
-					if(precharge_reconnect_atempt > 3){			
+					if(precharge_reconnect_atempt > 3){
 						while(HW_LOAD_DETECTION()){			// if max attempt reached, wait for load removal. Is considered a
 							sleep_reset();					// critical fault so bms must be stay here until load
 							precharge_reconnect_atempt = 0;	// is removed.

@@ -201,6 +201,8 @@ static int blink_count = 0;
 float aux_temp_limit = 0.0;
 bool BMS_was_chargin = 0;
 systime_t  UV_timer = 0;
+systime_t  IDLE_timer = 0;
+bool IDLE_check_time = 1;
 static THD_FUNCTION(charge_discharge_thd,p){
 	(void)p;
 	chRegSetThreadName("Charge_Discharge");
@@ -383,21 +385,28 @@ static THD_FUNCTION(charge_discharge_thd,p){
 		}
 
 		// check current direction
-		if ( (HW_GET_I_IN() > 0.05) && (FAULT_CODE == FAULT_CODE_NONE) ) {// incoming current, pack is charging
+		if ( (HW_GET_I_IN() > HW_IDLE_CURR_THRESHOLD) && (FAULT_CODE == FAULT_CODE_NONE) ) {// incoming current, pack is charging
 			BMS_state = BMS_CHARGING;
+			IDLE_check_time = TRUE;
 		} else {
-			if ( (HW_GET_I_IN() < -0.05) && (FAULT_CODE == FAULT_CODE_NONE) ) { // out going current, pack is dischargin
+			if ( (HW_GET_I_IN() < -HW_IDLE_CURR_THRESHOLD) && (FAULT_CODE == FAULT_CODE_NONE) ) { // out going current, pack is dischargin
 				BMS_state = BMS_DISCHARGIN;
+				IDLE_check_time = TRUE;
 			} else {
 				if ( FAULT_CODE != FAULT_CODE_NONE ) {
 					BMS_state = BMS_FAULT;
+					IDLE_check_time = TRUE;
 				} else {
-					BMS_state = BMS_IDLE;//between -0.03 and 0.03 is considered adc noise, with no faults and no current bms is IDLE
+					if(IDLE_check_time){
+						IDLE_timer = chVTGetSystemTimeX();
+						IDLE_check_time = FALSE;
+					}
+					if( UTILS_AGE_S(IDLE_timer) >  HW_IDLE_TIMEOUT ) 
+						BMS_state = BMS_IDLE;//between -HW_IDLE_CURR_THRESHOLD and HW_IDLE_CURR_THRESHOLD is considered adc noise, with no faults and no current bms is IDLE
 				}
 			}
 		}
-//commands_printf("%d %d %d %d %d %d %d %d", flag_temp_Vreg_fault, flag_temp_OT_cell_fault, flag_temp_UT_cell_fault, flag_temp_hardware_fault, flag_I_charge_fault, flag_OC_discharge_fault , flag_UV_fault, flag_OV_fault );
-//commands_printf("%d",BMS_state);
+
 		switch(BMS_state){
 
 			case BMS_CHARGING:	// de activate discharge port

@@ -221,6 +221,14 @@
 #define HW_SHUT_DOWN()          __NOP()
 #endif
 
+#ifndef HW_IDLE_CURR_THRESHOLD
+#define HW_IDLE_CURR_THRESHOLD  0.025   //if abs current is beolw this threshold the bms is considered in IDLE state [A]
+#endif
+
+#ifndef HW_IDLE_TIMEOUT
+#define HW_IDLE_TIMEOUT         0.3     //the current must be under min threshold during this amount of time to consider BMS in IDLE state [s]
+#endif
+
 // Functions
 uint8_t hw_id_from_uuid(void);
 
