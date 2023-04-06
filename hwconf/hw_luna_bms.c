@@ -192,7 +192,7 @@ static THD_FUNCTION(precharge_thread, arg) {
 			switch(PRECHARGE_STATUS) {
 
 				case PRECH_IDLE:
-
+					bq_allow_discharge(false);
 					if ( precharge_current > PRECHARGE_CURRENT_THRESHOLD && precharge_temp < PRECHARGE_TEMP_MAX 
 					&& precharge_current < PRECHARGE_OC) {
 						prech_thresold_time = chVTGetSystemTimeX();
@@ -200,17 +200,22 @@ static THD_FUNCTION(precharge_thread, arg) {
 						sleep_reset();
 						
 					} else {
-						if ( precharge_temp >= PRECHARGE_TEMP_MAX ) {
-							PRECHARGE_STATUS = PRECH_TEMP_FAULT;
-							bq_allow_discharge(false);
-							PRECHARGE_OFF();
-							bms_if_fault_report(FAULT_CODE_PRECH_OT);
-						} else {
-							if ( precharge_current >= PRECHARGE_OC ) {
-								PRECHARGE_STATUS = PRECH_OC_FAULT;
+						if (bms_if_get_bms_state() == BMS_CHARGING && precharge_temp < PRECHARGE_TEMP_MAX 
+						&& precharge_current < PRECHARGE_OC){
+							bq_allow_discharge(true);
+						}else{
+							if ( precharge_temp >= PRECHARGE_TEMP_MAX ) {
+								PRECHARGE_STATUS = PRECH_TEMP_FAULT;
 								bq_allow_discharge(false);
 								PRECHARGE_OFF();
-								bms_if_fault_report(FAULT_CODE_PRECH_OC);
+								bms_if_fault_report(FAULT_CODE_PRECH_OT);
+							} else {
+								if ( precharge_current >= PRECHARGE_OC ) {
+									PRECHARGE_STATUS = PRECH_OC_FAULT;
+									bq_allow_discharge(false);
+									PRECHARGE_OFF();
+									bms_if_fault_report(FAULT_CODE_PRECH_OC);
+								}
 							}
 						}
 					}
