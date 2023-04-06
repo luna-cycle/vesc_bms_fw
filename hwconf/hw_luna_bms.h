@@ -97,6 +97,10 @@
 #endif
 #define HW_PCB_TEMP()               bms_if_get_vreg_temp()
 #define HW_SHUT_DOWN()              bq_shutdown_bq76940()
+#define HW_FAULT_DATA_CC()          bq_get_fault_data_current()
+#define HW_FAUTL_DATA_CC_IC()       bq_get_fault_data_current()
+#define HW_FAULT_DATA_UV()          bq_get_fault_data_UV()
+#define HW_FAULT_DATA_OV()          bq_get_fault_data_OV()
 
 // Settings
 #define HW_ADC_TEMP_SENSORS		8// total temp sensors

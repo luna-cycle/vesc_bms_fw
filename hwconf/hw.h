@@ -229,6 +229,23 @@
 #define HW_IDLE_TIMEOUT         0.3     //the current must be under min threshold during this amount of time to consider BMS in IDLE state [s]
 #endif
 
+#ifndef HW_FAULT_DATA_CC
+#define HW_FAULT_DATA_CC()     bms_if_get_i_in();
+#endif
+
+#ifndef HW_FAULT_DATA_CC_IC
+#define HW_FAULT_DATA_CC_IC()  bms_if_get_i_in_ic();
+#endif
+
+
+#ifndef HW_FAULT_DATA_UV
+#define HW_FAULT_DATA_UV()     bms_if_get_v_cell_max();
+#endif
+
+#ifndef HW_FAULT_DATA_OV
+#define HW_FAULT_DATA_OV()     bms_if_get_v_cell_max();
+#endif
+
 // Functions
 uint8_t hw_id_from_uuid(void);
 

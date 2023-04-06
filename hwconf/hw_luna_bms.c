@@ -173,7 +173,7 @@ int PRECHARGE_STATUS = PRECH_IDLE;
 systime_t prech_thresold_time = 0;
 uint16_t precharge_reconnect_timeout = 0;
 uint8_t precharge_reconnect_atempt = 0;
-
+bool afe_report_fault = 0;
 static THD_FUNCTION(precharge_thread, arg) {
 	(void)arg;
 	chRegSetThreadName("PRECHARGE_MONITOR");
@@ -182,12 +182,21 @@ static THD_FUNCTION(precharge_thread, arg) {
 	bq_allow_discharge(false);
 
 	while ( !chThdShouldTerminateX() ) {
+
+		if( bq_sc_detected() || bq_oc_detected() || bq_ov_detected() || bq_uv_detected() ){
+			PRECHARGE_OFF();
+			afe_report_fault = TRUE;
+		}
+		else
+		{
+			afe_report_fault = FALSE;
+		}
 		chThdSleepMilliseconds(5);// time to ADC convert
 		
 		precharge_temp = HW_GET_PRECH_TEMP();
 		precharge_current = HW_GET_PRECH_CURRENT();
 
-		if( bms_if_get_bms_state() != BMS_FAULT ) {
+		if( (bms_if_get_bms_state() != BMS_FAULT) && !afe_report_fault) {
 
 			switch(PRECHARGE_STATUS) {
 
@@ -263,7 +272,7 @@ static THD_FUNCTION(precharge_thread, arg) {
 							}
 						}
 					}
-					chThdSleepMilliseconds(300); // wait for bms to detect the discarging and change state
+					//chThdSleepMilliseconds(300); // wait for bms to detect the discarging and change state
 
 				break;
 

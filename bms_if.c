@@ -286,13 +286,14 @@ static THD_FUNCTION(charge_discharge_thd,p){
 			}
 		}
 
+		float current_now = bms_if_get_i_in();
 		//check over current charge
-		if ( (HW_GET_I_IN() > backup.config.max_charge_current) && (flag_I_charge_fault == 0) ) {
-			bms_if_fault_report(FAULT_CODE_CHARGE_OVERCURRENT);
+		if ( (current_now > backup.config.max_charge_current) && (flag_I_charge_fault == 0) ) {
+			bms_if_fault_report(FAULT_CODE_CHARGE_OVERCURRENT);commands_printf("over current charge: \t %f", current_now);//TODO: erase this line after test
 			flag_I_charge_fault = 1;
 			blink_count = 0;
 		} else {
-			if(HW_GET_I_IN() < backup.config.max_charge_current){
+			if(current_now < backup.config.max_charge_current){
 				flag_I_charge_fault = 0;
 				oc_charge_count_attempt = 0;
 			}
@@ -379,17 +380,17 @@ static THD_FUNCTION(charge_discharge_thd,p){
 		}
 
 		//check minumum sleep current
-		fabs_in_current = fabs(HW_GET_I_IN());
+		fabs_in_current = fabs(current_now);
 		if( fabs_in_current > backup.config.min_current_sleep ) {
 			sleep_reset();// prevent sleeping
 		}
 
 		// check current direction
-		if ( (HW_GET_I_IN() > HW_IDLE_CURR_THRESHOLD) && (FAULT_CODE == FAULT_CODE_NONE) ) {// incoming current, pack is charging
+		if ( (current_now > HW_IDLE_CURR_THRESHOLD) && (FAULT_CODE == FAULT_CODE_NONE) ) {// incoming current, pack is charging
 			BMS_state = BMS_CHARGING;
 			IDLE_check_time = TRUE;
 		} else {
-			if ( (HW_GET_I_IN() < -HW_IDLE_CURR_THRESHOLD) && (FAULT_CODE == FAULT_CODE_NONE) ) { // out going current, pack is dischargin
+			if ( (current_now < -HW_IDLE_CURR_THRESHOLD) && (FAULT_CODE == FAULT_CODE_NONE) ) { // out going current, pack is dischargin
 				BMS_state = BMS_DISCHARGIN;
 				IDLE_check_time = TRUE;
 			} else {
@@ -529,11 +530,11 @@ static THD_FUNCTION(charge_discharge_thd,p){
 						}
 							
 						// check for in current
-						if(HW_GET_I_IN() > 0.1){// incoming current, pack is charging
+						if(current_now > 0.1){// incoming current, pack is charging
 							HW_PACK_CONN_ONLY_CHARGE(false);// connect discharge and charge ports
 							HW_PACK_CONNECT();//connect pack
 							} else {
-								if(HW_GET_I_IN() < -0.1 ){ // out going current, pack is discharging
+								if(current_now < -0.1 ){ // out going current, pack is discharging
 									HW_PACK_CONN_ONLY_CHARGE(true);// allow only charging
 									HW_PACK_CONNECT();//connect pack
 							}
@@ -1234,13 +1235,21 @@ void bms_if_fault_report(bms_fault_code fault) {
 
 	f.fault = fault;
 	f.fault_time = chVTGetSystemTimeX();
-	f.current = bms_if_get_i_in();
-	f.current_ic = bms_if_get_i_in_ic();
+	if( (fault == FAULT_CODE_DISCHARGE_SHORT_CIRCUIT) || (fault == FAULT_CODE_DISCHARGE_OVERCURRENT) || 
+		(fault == FAULT_CODE_CELL_UNDERVOLTAGE) || (fault == FAULT_CODE_CELL_OVERVOLTAGE)){
+		f.current = HW_FAULT_DATA_CC();
+		f.current_ic = HW_FAULT_DATA_CC_IC();
+		f.v_cell_min = HW_FAULT_DATA_UV(); //bms_if_get_v_cell_min();
+		f.v_cell_max = HW_FAULT_DATA_OV(); //bms_if_get_v_cell_max();
+	}else{
+		f.current = bms_if_get_i_in();
+		f.current_ic = bms_if_get_i_in_ic();
+		f.v_cell_min = bms_if_get_v_cell_min();
+		f.v_cell_max = bms_if_get_v_cell_max();
+	}
 	f.temp_batt = HW_TEMP_CELLS_MAX();
 	f.temp_pcb = HW_PCB_TEMP();
 	f.temp_ic = bms_if_get_temp_ic();
-	f.v_cell_min = bms_if_get_v_cell_min();
-	f.v_cell_max = bms_if_get_v_cell_max();
 	f.pcb_humidity = bms_if_get_humsens_hum_pcb();
 #ifdef USE_PRECHARGE
 	f.prech_temp = HW_GET_PRECH_TEMP();
