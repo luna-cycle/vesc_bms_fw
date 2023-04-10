@@ -234,16 +234,7 @@ void bq76940_Alert_handler(void) {
 		//bms_if_fault_report(FAULT_CODE_CELL_UNDERVOLTAGE);
 		bq76940->UV_detected = true;
 		bq76940->request_connection_pack = false;
-
-		// acquire max cell
-		v_aux = 0.0;
-		for (int i = backup.config.cell_first_index;i < (backup.config.cell_num + backup.config.cell_first_index) ;i++ ) {
-			if (HW_LAST_CELL_VOLTAGE(i) > v_aux) {
-				v_aux = HW_LAST_CELL_VOLTAGE(i);
-			}
-		}
-		bq76940->fault_v_max = v_aux;
-		commands_printf("max cell: %f", v_aux);
+		read_cell_voltages(m_v_cell);
 
 		// acquire min cell
 		v_aux = 100.0;
@@ -254,10 +245,6 @@ void bq76940_Alert_handler(void) {
 			}
 		}
 		bq76940->fault_v_min = v_aux;
-		commands_printf("min cell: %f", v_aux);
-
-		bq76940->fault_current_in = bq_read_CC();
-		commands_printf("current: %f", bq76940->fault_current_in);//TODO: erase this line after test
 	}
 
 	if ( sys_stat & SYS_STAT_OV ) {
@@ -274,21 +261,6 @@ void bq76940_Alert_handler(void) {
 			}
 		}
 		bq76940->fault_v_max = v_aux;
-		commands_printf("max cell: %f", v_aux);//TODO: erase this line after test
-
-		// acquire min cell
-		v_aux = 100.0;
-		for (int i = backup.config.cell_first_index;i <
-		(backup.config.cell_num + backup.config.cell_first_index);i++) {
-			if (HW_LAST_CELL_VOLTAGE(i) < v_aux) {
-				v_aux = HW_LAST_CELL_VOLTAGE(i);
-			}
-		}
-		bq76940->fault_v_min = v_aux;
-		commands_printf("min cell: %f", v_aux);//TODO: erase this line after test
-
-		bq76940->fault_current_in = bq_read_CC();
-		commands_printf("current: %f", bq76940->fault_current_in);//TODO: erase this line after test
 	}
 
 	if ( sys_stat & SYS_STAT_SCD ) {
@@ -296,29 +268,7 @@ void bq76940_Alert_handler(void) {
 		bq76940->sc_detected =  true;
 		bq76940->request_connection_pack = false;
 
-		// acquire max cell
-		v_aux = 0.0;
-		for (int i = backup.config.cell_first_index;i < (backup.config.cell_num + backup.config.cell_first_index) ;i++ ) {
-			if (HW_LAST_CELL_VOLTAGE(i) > v_aux) {
-				v_aux = HW_LAST_CELL_VOLTAGE(i);
-			}
-		}
-		bq76940->fault_v_max = v_aux;
-		commands_printf("max cell: %f", v_aux);//TODO: erase this line after test
-
-		// acquire min cell
-		v_aux = 100.0;
-		for (int i = backup.config.cell_first_index;i <
-		(backup.config.cell_num + backup.config.cell_first_index);i++) {
-			if (HW_LAST_CELL_VOLTAGE(i) < v_aux) {
-				v_aux = HW_LAST_CELL_VOLTAGE(i);
-			}
-		}
-		bq76940->fault_v_min = v_aux;
-		commands_printf("min cell: %f", v_aux);//TODO: erase this line after test
-
 		bq76940->fault_current_in = bq_read_CC();
-		commands_printf("current: %f", bq76940->fault_current_in);//TODO: erase this line after test
 	}
 
 	if ( sys_stat & SYS_STAT_OCD ) {
@@ -326,29 +276,7 @@ void bq76940_Alert_handler(void) {
 		bq76940->oc_detected =  true;
 		bq76940->request_connection_pack = false;
 
-		// acquire max cell
-		v_aux = 0.0;
-		for (int i = backup.config.cell_first_index;i < (backup.config.cell_num + backup.config.cell_first_index) ;i++ ) {
-			if (HW_LAST_CELL_VOLTAGE(i) > v_aux) {
-				v_aux = HW_LAST_CELL_VOLTAGE(i);
-			}
-		}
-		bq76940->fault_v_max = v_aux;
-		commands_printf("max cell: %f", v_aux);//TODO: erase this line after test
-
-		// acquire min cell
-		v_aux = 100.0;
-		for (int i = backup.config.cell_first_index;i <
-		(backup.config.cell_num + backup.config.cell_first_index);i++) {
-			if (HW_LAST_CELL_VOLTAGE(i) < v_aux) {
-				v_aux = HW_LAST_CELL_VOLTAGE(i);
-			}
-		}
-		bq76940->fault_v_min = v_aux;
-		commands_printf("min cell: %f", v_aux);//TODO: erase this line after test
-
 		bq76940->fault_current_in = bq_read_CC();
-		commands_printf("current: %f", bq76940->fault_current_in);//TODO: erase this line after test
 	}
 
 	if( bq76940->initialized == false ) {

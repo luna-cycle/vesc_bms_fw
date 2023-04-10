@@ -1235,17 +1235,22 @@ void bms_if_fault_report(bms_fault_code fault) {
 
 	f.fault = fault;
 	f.fault_time = chVTGetSystemTimeX();
-	if( (fault == FAULT_CODE_DISCHARGE_SHORT_CIRCUIT) || (fault == FAULT_CODE_DISCHARGE_OVERCURRENT) || 
-		(fault == FAULT_CODE_CELL_UNDERVOLTAGE) || (fault == FAULT_CODE_CELL_OVERVOLTAGE)){
+	if( (fault == FAULT_CODE_DISCHARGE_SHORT_CIRCUIT) || (fault == FAULT_CODE_DISCHARGE_OVERCURRENT) ){
 		f.current = HW_FAULT_DATA_CC();
 		f.current_ic = HW_FAULT_DATA_CC_IC();
-		f.v_cell_min = HW_FAULT_DATA_UV(); //bms_if_get_v_cell_min();
-		f.v_cell_max = HW_FAULT_DATA_OV(); //bms_if_get_v_cell_max();
 	}else{
 		f.current = bms_if_get_i_in();
 		f.current_ic = bms_if_get_i_in_ic();
-		f.v_cell_min = bms_if_get_v_cell_min();
+	}
+	if( fault == FAULT_CODE_CELL_OVERVOLTAGE ){
+		f.v_cell_max = HW_FAULT_DATA_OV();
+	}else{
 		f.v_cell_max = bms_if_get_v_cell_max();
+	}
+	if( fault = FAULT_CODE_CELL_UNDERVOLTAGE ){
+		f.v_cell_min = HW_FAULT_DATA_UV();
+	}else{
+		f.v_cell_min = bms_if_get_v_cell_min();
 	}
 	f.temp_batt = HW_TEMP_CELLS_MAX();
 	f.temp_pcb = HW_PCB_TEMP();

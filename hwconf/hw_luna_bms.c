@@ -329,15 +329,25 @@ static THD_FUNCTION(precharge_thread, arg) {
 			}
 			
 		} else {
-			while(bms_if_get_bms_state() == BMS_FAULT) {// the pre charge must not interfiere in the fault handle
+			while( (bms_if_get_bms_state() == BMS_FAULT)  && afe_report_fault) {// the pre charge must not interfiere in the fault handle
+				afe_report_fault = FALSE;
 				PRECHARGE_OFF(); // the precahrge must be off in order to let the AFE to detect for example a short chircuit
 				bq_allow_discharge(true); // let the AFE to decide if connect or not
 				chThdSleepMilliseconds(300); // let time to the AFE and charge_discharge task to handle the fault
 										// the AFE thread will be executed after 250ms (worst case)
 			}
-			PRECHARGE_STATUS = PRECH_IDLE; // when the bms recovers from the fault, return to the wait for discharge state
+
 			PRECHARGE_ON();
-			bq_allow_discharge(false);
+
+			if( bms_if_get_bms_state() == BMS_IDLE ){
+				PRECHARGE_STATUS = PRECH_IDLE; // when the bms recovers from the fault, return to the wait for discharge state
+				bq_allow_discharge(false);
+			}
+			if( (bms_if_get_bms_state() == BMS_DISCHARGIN) || (bms_if_get_bms_state() == BMS_CHARGING) ){
+				PRECHARGE_STATUS = PRECH_WAIT_FOR_IDLE; // when the bms recovers from the fault, return to the wait for discharge state
+			}
+
+
 		}
 	}
 }
