@@ -65,7 +65,7 @@ typedef struct {
 	bool charge_enabled;
 	bool is_connected_pack;
 	bool request_connection_pack;
-	fault_data fault;
+	//fault_data fault;
 	bool is_load_present;
 	bool oc_detected;
 	bool sc_detected;
@@ -74,14 +74,17 @@ typedef struct {
 	bool connect_only_charger;
 	bool discharge_allowed;
 	uint8_t re_init_retry;
+	float fault_current_in;
+	float fault_v_min;
+	float fault_v_max;
 } bq76940_t;
 
 // The config is stored in the backup struct so that it is stored while sleeping.
 static volatile bq76940_t *bq76940 = (bq76940_t*)&backup.hw_config[0];
 
-static void fault_data_cb(fault_data * const fault) {
-	bq76940->fault = *fault;
-}
+//static void fault_data_cb(fault_data * const fault) {
+	//bq76940->fault = *fault;
+//}
 
 static I2CConfig i2cfg1 = {
 	STM32_TIMINGR_PRESC(4U) | // Uing 16MHZ HSI clock to source I2CCLK.
@@ -214,6 +217,8 @@ void bq76940_Alert_handler(void) {
 
 	// Read Status Register
 	uint8_t sys_stat = read_reg(BQ_SYS_STAT);
+	float v_aux = 0.0;
+
 	// Report fault codes
 	if ( sys_stat & SYS_STAT_DEVICE_XREADY ) {
 		//handle error
@@ -229,24 +234,49 @@ void bq76940_Alert_handler(void) {
 		//bms_if_fault_report(FAULT_CODE_CELL_UNDERVOLTAGE);
 		bq76940->UV_detected = true;
 		bq76940->request_connection_pack = false;
+		read_cell_voltages(m_v_cell);
+
+		// acquire min cell
+		v_aux = 100.0;
+		for (int i = backup.config.cell_first_index;i <
+		(backup.config.cell_num + backup.config.cell_first_index);i++) {
+			if (HW_LAST_CELL_VOLTAGE(i) < v_aux) {
+				v_aux = HW_LAST_CELL_VOLTAGE(i);
+			}
+		}
+		bq76940->fault_v_min = v_aux;
 	}
 
 	if ( sys_stat & SYS_STAT_OV ) {
 		//bms_if_fault_report(FAULT_CODE_CELL_OVERVOLTAGE);
 		bq76940->OV_detected = true;
 		bq76940->request_connection_pack = false;
+		read_cell_voltages(m_v_cell);
+
+		// acquire max cell
+		v_aux = 0.0;
+		for (int i = backup.config.cell_first_index;i < (backup.config.cell_num + backup.config.cell_first_index) ;i++ ) {
+			if (HW_LAST_CELL_VOLTAGE(i) > v_aux) {
+				v_aux = HW_LAST_CELL_VOLTAGE(i);
+			}
+		}
+		bq76940->fault_v_max = v_aux;
 	}
 
 	if ( sys_stat & SYS_STAT_SCD ) {
 		//bms_if_fault_report(FAULT_CODE_DISCHARGE_SHORT_CIRCUIT);
 		bq76940->sc_detected =  true;
 		bq76940->request_connection_pack = false;
+
+		bq76940->fault_current_in = bq_read_CC();
 	}
 
 	if ( sys_stat & SYS_STAT_OCD ) {
 		//bms_if_fault_report(FAULT_CODE_DISCHARGE_OVERCURRENT);
 		bq76940->oc_detected =  true;
 		bq76940->request_connection_pack = false;
+
+		bq76940->fault_current_in = bq_read_CC();
 	}
 
 	if( bq76940->initialized == false ) {
@@ -663,6 +693,18 @@ void bq_semaphore (void){
 
 void bq_allow_discharge(bool set) {
 	bq76940->discharge_allowed = set;
+}
+
+float bq_get_fault_data_current(void){
+	return bq76940->fault_current_in;
+}
+
+float bq_get_fault_data_UV(void){
+	return bq76940->fault_v_min;
+}
+
+float bq_get_fault_data_OV(void){
+	return bq76940->fault_v_max;
 }
 #endif
 

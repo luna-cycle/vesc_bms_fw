@@ -173,7 +173,7 @@ int PRECHARGE_STATUS = PRECH_IDLE;
 systime_t prech_thresold_time = 0;
 uint16_t precharge_reconnect_timeout = 0;
 uint8_t precharge_reconnect_atempt = 0;
-
+bool afe_report_fault = 0;
 static THD_FUNCTION(precharge_thread, arg) {
 	(void)arg;
 	chRegSetThreadName("PRECHARGE_MONITOR");
@@ -182,12 +182,21 @@ static THD_FUNCTION(precharge_thread, arg) {
 	bq_allow_discharge(false);
 
 	while ( !chThdShouldTerminateX() ) {
+
+		if( bq_sc_detected() || bq_oc_detected() || bq_ov_detected() || bq_uv_detected() ){
+			PRECHARGE_OFF();
+			afe_report_fault = TRUE;
+		}
+		else
+		{
+			afe_report_fault = FALSE;
+		}
 		chThdSleepMilliseconds(5);// time to ADC convert
 		
 		precharge_temp = HW_GET_PRECH_TEMP();
 		precharge_current = HW_GET_PRECH_CURRENT();
 
-		if( bms_if_get_bms_state() != BMS_FAULT ) {
+		if( (bms_if_get_bms_state() != BMS_FAULT) && !afe_report_fault) {
 
 			switch(PRECHARGE_STATUS) {
 
@@ -268,7 +277,7 @@ static THD_FUNCTION(precharge_thread, arg) {
 							}
 						}
 					}
-					chThdSleepMilliseconds(300); // wait for bms to detect the discarging and change state
+					//chThdSleepMilliseconds(300); // wait for bms to detect the discarging and change state
 
 				break;
 
@@ -325,15 +334,25 @@ static THD_FUNCTION(precharge_thread, arg) {
 			}
 			
 		} else {
-			while(bms_if_get_bms_state() == BMS_FAULT) {// the pre charge must not interfiere in the fault handle
+			while( (bms_if_get_bms_state() == BMS_FAULT)  && afe_report_fault) {// the pre charge must not interfiere in the fault handle
+				afe_report_fault = FALSE;
 				PRECHARGE_OFF(); // the precahrge must be off in order to let the AFE to detect for example a short chircuit
 				bq_allow_discharge(true); // let the AFE to decide if connect or not
 				chThdSleepMilliseconds(300); // let time to the AFE and charge_discharge task to handle the fault
 										// the AFE thread will be executed after 250ms (worst case)
 			}
-			PRECHARGE_STATUS = PRECH_IDLE; // when the bms recovers from the fault, return to the wait for discharge state
+
 			PRECHARGE_ON();
-			bq_allow_discharge(false);
+
+			if( bms_if_get_bms_state() == BMS_IDLE ){
+				PRECHARGE_STATUS = PRECH_IDLE; // when the bms recovers from the fault, return to the wait for discharge state
+				bq_allow_discharge(false);
+			}
+			if( (bms_if_get_bms_state() == BMS_DISCHARGIN) || (bms_if_get_bms_state() == BMS_CHARGING) ){
+				PRECHARGE_STATUS = PRECH_WAIT_FOR_IDLE; // when the bms recovers from the fault, return to the wait for discharge state
+			}
+
+
 		}
 	}
 }
