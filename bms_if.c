@@ -289,7 +289,7 @@ static THD_FUNCTION(charge_discharge_thd,p){
 		float current_now = bms_if_get_i_in();
 		//check over current charge
 		if ( (current_now > backup.config.max_charge_current) && (flag_I_charge_fault == 0) ) {
-			bms_if_fault_report(FAULT_CODE_CHARGE_OVERCURRENT);commands_printf("over current charge: \t %f", current_now);//TODO: erase this line after test
+			bms_if_fault_report(FAULT_CODE_CHARGE_OVERCURRENT);
 			flag_I_charge_fault = 1;
 			blink_count = 0;
 		} else {
@@ -1247,7 +1247,7 @@ void bms_if_fault_report(bms_fault_code fault) {
 	}else{
 		f.v_cell_max = bms_if_get_v_cell_max();
 	}
-	if( fault = FAULT_CODE_CELL_UNDERVOLTAGE ){
+	if( fault == FAULT_CODE_CELL_UNDERVOLTAGE ){
 		f.v_cell_min = HW_FAULT_DATA_UV();
 	}else{
 		f.v_cell_min = bms_if_get_v_cell_min();
