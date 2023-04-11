@@ -380,7 +380,7 @@ static THD_FUNCTION(charge_discharge_thd,p){
 		}
 
 		//check minumum sleep current
-		fabs_in_current = fabs(current_now);
+		fabs_in_current = fabs(HW_GET_I_IN());
 		if( fabs_in_current > backup.config.min_current_sleep ) {
 			sleep_reset();// prevent sleeping
 		}
