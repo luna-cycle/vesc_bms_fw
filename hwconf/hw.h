@@ -246,6 +246,14 @@
 #define HW_FAULT_DATA_OV()     bms_if_get_v_cell_max();
 #endif
 
+#ifndef HW_SOC_MAX_V
+#define HW_SOC_MAX_V           4.2      //nominal min cell voltage used for SOC estimation [V]
+#endif
+
+#ifndef HW_SOC_MIN_V
+#define HW_SOC_MIN_V           3.2      //nominal cell voltage used for SOC estimation [V]
+#endif
+
 // Functions
 uint8_t hw_id_from_uuid(void);
 

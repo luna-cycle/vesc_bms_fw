@@ -57,6 +57,8 @@
 #define HW_UV_TIMEOUT           10.0    //if UV is manteined during this amount of time, enter in ship mode [s]
 #define HW_IDLE_CURR_THRESHOLD  0.035   //if abs current is beolw this threshold the bms is considered in IDLE state [A]
 #define HW_IDLE_TIMEOUT         1.0     //the current must be under min threshold during this amount of time to consider BMS in IDLE state [s]
+#define HW_SOC_MAX_V            4.2      //nominal min cell voltage used for SOC estimation [V]
+#define HW_SOC_MIN_V            2.8      //nominal cell voltage used for SOC estimation [V]
 // Macros
 #define HW_INIT_HOOK()
 

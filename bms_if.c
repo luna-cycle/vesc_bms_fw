@@ -826,7 +826,7 @@ static THD_FUNCTION(if_thd, p) {
 			sleep_reset();
 		}
 
-		float soc_now = utils_batt_liion_norm_v_to_capacity(utils_map(m_voltage_cell_min, 3.2, 4.2, 0.0, 1.0));
+		float soc_now = utils_batt_liion_norm_v_to_capacity(utils_map(m_voltage_cell_min, HW_SOC_MIN_V, HW_SOC_MAX_V, 0.0, 1.0));
 		if (!m_soc_filter_init_done) {
 			m_soc_filter_init_done = true;
 			m_soc_filtered = soc_now;
