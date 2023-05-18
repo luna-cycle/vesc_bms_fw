@@ -32,6 +32,7 @@
 #include "chbsem.h"
 #include "ch.h"
 #include "chtime.h"
+#include "stdlib.h"
 #ifdef HW_HAS_BQ76940
 
 #define MAX_CELL_NUM		15
@@ -44,7 +45,7 @@
 static i2c_bb_state  m_i2c;
 static float m_v_cell[MAX_CELL_NUM];
 static volatile bool m_discharge_state[MAX_CELL_NUM] = {false};
-
+static volatile bool m_discharge[MAX_CELL_NUM] = {false};
 typedef struct {
 	i2c_bb_state m_i2c;
 	bool mutex;
@@ -111,7 +112,7 @@ static void read_cell_voltages(float *m_v_cell);
 static void read_v_batt(volatile float *v_bat);
 uint8_t read_reg(uint8_t reg);
 uint8_t CRC8(unsigned char *ptr, unsigned char len,unsigned char key);
-void bq_balance_cells(volatile bool *m_discharge_state);
+void bq_balance_cells(volatile bool *m_discharge_state, volatile float *m_v_cell, volatile bool *m_discharge_filtering);
 uint8_t tripVoltage(float voltage);
 void bq_disconnect_battery(bool disconnect);
 bool status_load_present(void);
@@ -296,7 +297,7 @@ void bq76940_Alert_handler(void) {
 	// Every 1 second make the long read
 	static uint8_t i = 0;
 	//Here I'll select the sequence of no balance, measure, and then balance.
-	if( i == 6 ){ //>1,5 seconds -> no balance
+	if( i == 7 ){ //>1,75 seconds -> no balance
 		write_reg(BQ_CELLBAL1, 0x00);
 		write_reg(BQ_CELLBAL2, 0x00);
 		write_reg(BQ_CELLBAL3, 0x00);		
@@ -306,8 +307,8 @@ void bq76940_Alert_handler(void) {
 		read_v_batt(&bq76940->pack_mv);		
 		i = 0;
 	}
-	if( i <= 3 ){ //<1 seconds -> balance
-		bq_balance_cells(m_discharge_state);	//configure balancing bits over i2c
+	if( i <= 6 ){ //<1,5 seconds -> balance
+		bq_balance_cells(m_discharge_state, m_v_cell, m_discharge);	//configure balancing bits over i2c
 	}
 	
 	//read external temp for 2.5 sec, then internal temp for 2.5sec and repeat
@@ -590,30 +591,62 @@ bool bq_get_dsc(int cell) {
 		return false;
 	}
 
-	return m_discharge_state[cell];
+	return m_discharge[cell];
 }
 
-void bq_balance_cells(volatile bool *m_discharge_state) {
-	uint8_t buffer[3]= {0 ,0 ,0 };
+void bq_balance_cells(volatile bool *m_discharge_state, volatile float *m_v_cell, volatile bool *m_discharge) {
+	uint8_t buffer[3]= {0,0,0};
+	int i, j;
+	int sorted_indexes[MAX_CELL_NUM];
 
-	buffer[0] = m_discharge_state[0] ? buffer[0] = 0x01 : buffer[0];
-	buffer[0] = m_discharge_state[1] ? buffer[0] = 0x02 : buffer[0];
-	buffer[0] = m_discharge_state[2] ? buffer[0] = 0x04 : buffer[0];
-	buffer[0] = m_discharge_state[3] ? buffer[0] = 0x08 : buffer[0];
-	buffer[0] = m_discharge_state[4] ? buffer[0] = 0x10 : buffer[0];
+	// Initialize the sorted indices to the original indices
+	for (i = 0; i < MAX_CELL_NUM; i++) {
+		sorted_indexes[i] = i;
+	}
+
+	// Sort the cells that need balancing by voltage (highest to lowest)
+	for (i = 0; i < MAX_CELL_NUM - 1; i++) {
+		for (j = i + 1; j < MAX_CELL_NUM; j++) {
+			if (m_v_cell[sorted_indexes[i]] < m_v_cell[sorted_indexes[j]]) {
+				int temp = sorted_indexes[i];
+				sorted_indexes[i] = sorted_indexes[j];
+				sorted_indexes[j] = temp;
+			}
+		}
+	}
+
+	// Copy the array
+	for (i = 0; i < MAX_CELL_NUM ; i++) {
+		m_discharge[i] = m_discharge_state[i];
+	}
+
+	// Disable a cell balancing if a higher priority cell is contiguous and is scheduled for balancing
+	for (i = 1; i < MAX_CELL_NUM ; i++) {
+		for (j = 0; j < i; j++) {
+			if (abs(sorted_indexes[i] - sorted_indexes[j]) <= 1 && (m_discharge_state[sorted_indexes[j]] == 1)) {
+				m_discharge[sorted_indexes[i]] = 0;
+			}
+		}
+	}
+
+	if (m_discharge[0]) buffer[0] = buffer[0] | 0x01;
+	if (m_discharge[1]) buffer[0] = buffer[0] | 0x02;
+	if (m_discharge[2]) buffer[0] = buffer[0] | 0x04;
+	if (m_discharge[3]) buffer[0] = buffer[0] | 0x08;
+	if (m_discharge[4]) buffer[0] = buffer[0] | 0x10;
 	write_reg(BQ_CELLBAL1, buffer[0]);
 
-	buffer[1] = m_discharge_state[5] ? buffer[1] = 0x01 : buffer[1];
-	buffer[1] = m_discharge_state[6] ? buffer[1] = 0x02 : buffer[1];
-	buffer[1] = m_discharge_state[7] ? buffer[1] = 0x04 : buffer[1];
-	buffer[1] = m_discharge_state[8] ? buffer[1] = 0x08 : buffer[1];
-	buffer[1] = m_discharge_state[9] ? buffer[1] = 0x10 : buffer[1];
+	if (m_discharge[5]) buffer[1] = buffer[1] | 0x01;
+	if (m_discharge[6]) buffer[1] = buffer[1] | 0x02;
+	if (m_discharge[7]) buffer[1] = buffer[1] | 0x04;
+	if (m_discharge[8]) buffer[1] = buffer[1] | 0x08;
+	if (m_discharge[9]) buffer[1] = buffer[1] | 0x10;
 	write_reg(BQ_CELLBAL2, buffer[1]);
 
-	buffer[2] = m_discharge_state[10] ? buffer[2] = 0x01 : buffer[2];
-	buffer[2] = m_discharge_state[11] ? buffer[2] = 0x02 : buffer[2];
-	buffer[2] = m_discharge_state[12] ? buffer[2] = 0x0C : buffer[2];	// Special case for a 14s setup
-	buffer[2] = m_discharge_state[13] ? buffer[2] = 0x10 : buffer[2];
+	if (m_discharge[10]) buffer[2] = buffer[2] | 0x01;
+	if (m_discharge[11]) buffer[2] = buffer[2] | 0x02;
+	if (m_discharge[12]) buffer[2] = buffer[2] | 0x0C; // Special case for a 14s setup
+	if (m_discharge[13]) buffer[2] = buffer[2] | 0x10;
 	write_reg(BQ_CELLBAL3, buffer[2]);
 
 	return;
