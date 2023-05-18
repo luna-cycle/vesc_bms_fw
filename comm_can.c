@@ -766,6 +766,13 @@ static void decode_msg(uint32_t eid, uint8_t *data8, int len, bool is_replaced) 
 				// TODO: Implement when hw has power switch
 			} break;
 
+			case CAN_PACKET_BMS_GET_FAULT: {
+				//return BMS actual BMS fault code
+				uint8_t fault_code;
+				fault_code = (uint8_t) bms_if_fault_now();
+				comm_can_transmit_eid(id | ((uint32_t)CAN_PACKET_BMS_GET_FAULT << 8), &fault_code, 1);
+			} break;
+
 			default:
 				break;
 		}

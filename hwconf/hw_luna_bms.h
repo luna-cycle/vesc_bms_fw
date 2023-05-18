@@ -32,8 +32,8 @@
 #define WH_CAN_USE_SLEEP_MODE
 #define USE_AFE_WD
 #define HW_BIDIRECTIONAL_SWITCH
-#define HW_USE_WKP2
-#define USE_PRECHARGE
+//#define HW_USE_WKP2
+//#define USE_PRECHARGE
 #ifdef USE_PRECHARGE
 #define ADC_CHANNELS 13
 #endif
