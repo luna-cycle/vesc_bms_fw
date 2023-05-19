@@ -550,8 +550,13 @@ static THD_FUNCTION(charge_discharge_thd,p){
 							}
 						}
 						cell_min = v_min_aux;
+
+						if(cell_min < HW_ABS_MIN_CELL) {
+							HW_SHUT_DOWN();
+						}
+
 						if(cell_min > ( HW_MIN_CELL + HW_HYSTEREIS_MIN_CELL) ){
-							for(timeout = (RECONNECTION_TIMEOUT * 10); timeout > 0 ; timeout--){
+							for(timeout = (RECONNECTION_TIMEOUT * 100); timeout > 0 ; timeout--){
 								chThdSleepMilliseconds(100); // wait for time out before reconnect
 								sleep_reset();
 							}

@@ -48,7 +48,8 @@
 #define MAX_RECONNECT_ATTEMPT 	3		// max reconnection attempt after a short circuit or overcurrent
 #define RECONNECTION_TIMEOUT	3		// seconds to wait before reconnection attempt
 #define HW_MIN_CELL				2.6		//min cell voltage [V]
-#define HW_HYSTEREIS_MIN_CELL	0.05	//min cell hysteresis to clear undervoltage [V]
+#define HW_HYSTEREIS_MIN_CELL	0.1 	//min cell hysteresis to clear undervoltage [V]
+#define HW_ABS_MIN_CELL         2.5      // absolute minimum cell, under this voltage BMS must shut down AFE [V]
 #define HW_MAX_CELL				4.25	//max cell voltage [V]
 #define HW_HYSTEREIS_MAX_CELL	0.05	//max cell hysteresis to clear undervoltage [V]
 #define HW_MAX_CELL_TEMP_CHARG  backup.config.t_charge_max    //max cell temp during chargin

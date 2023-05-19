@@ -254,6 +254,9 @@
 #define HW_SOC_MIN_V           3.2      //nominal cell voltage used for SOC estimation [V]
 #endif
 
+#ifndef HW_ABS_MIN_CELL
+#define HW_ABS_MIN_CELL        2.5      // absolute minimum cell, under this voltage BMS must shut down AFE [V]
+#endif
 // Functions
 uint8_t hw_id_from_uuid(void);
 
