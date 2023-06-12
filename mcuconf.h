@@ -30,11 +30,12 @@
 
 #ifndef MCUCONF_H
 #define MCUCONF_H
-
 #define STM32L4xx_MCUCONF
+#define STM32L431_MCUCONF
 #define STM32L476_MCUCONF
 #define STM32L486_MCUCONF
 #include HW_HEADER
+
 /*
  * HAL driver system settings.
  */
@@ -291,7 +292,11 @@
 #define STM32_PWM_USE_TIM1                  FALSE
 #define STM32_PWM_USE_TIM2                  FALSE
 #define STM32_PWM_USE_TIM3                  FALSE
+#ifdef HW_MCU_STM32L431
+#define STM32_PWM_USE_TIM4                  FALSE
+#else
 #define STM32_PWM_USE_TIM4                  TRUE
+#endif
 #define STM32_PWM_USE_TIM5                  FALSE
 #define STM32_PWM_USE_TIM8                  FALSE
 #define STM32_PWM_USE_TIM15                 FALSE
@@ -404,7 +409,11 @@
 /*
  * USB driver system settings.
  */
+#ifdef HW_MCU_STM32L431
+#define STM32_USB_USE_OTG1                  FALSE
+#else
 #define STM32_USB_USE_OTG1                  TRUE
+#endif
 #define STM32_USB_OTG1_IRQ_PRIORITY         14
 #define STM32_USB_OTG1_RX_FIFO_SIZE         1024
 

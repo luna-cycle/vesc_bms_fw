@@ -60,7 +60,14 @@
 /*
  * MCU type as defined in the ST header.
  */
+#ifdef HW_MCU_STM32L431
+#define STM32L431xx
+#define HAL_USE_PWM         FALSE
+#define HAL_USE_SERIAL_USB  FALSE
+#define HAL_USE_USB         FALSE
+#else
 #define STM32L476xx
+#endif
 
 /*
  * IO pins assignments.

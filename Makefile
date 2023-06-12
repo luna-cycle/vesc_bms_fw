@@ -110,7 +110,13 @@ include blackmagic/blackmagic.mk
 include compression/compression.mk
 
 # Define linker script file here
-LDSCRIPT= STM32L476xG.ld
+ifeq ($(HW_MCU_STM32L431),TRUE)
+  LDSCRIPT= STM32L431RT6.ld
+  $(info ************  Compiling for STM32L431 ************)
+else
+  LDSCRIPT= STM32L476xG.ld
+  $(info ************  Compiling for STM32L476 ************)
+endif
 
 # C sources that can be compiled in ARM or THUMB mode depending on the global
 # setting.

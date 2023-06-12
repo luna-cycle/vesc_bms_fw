@@ -41,11 +41,15 @@
 uint16_t flash_helper_erase_new_app(uint32_t new_app_size) {
 	uint32_t bank = FLASH_BANK_2;
 	uint32_t page = 256;
+#ifdef HW_MCU_STM32L431
+	bank = FLASH_BANK_1;
+	page = 64;
+#else
 	if (*STM32_FLASH_SIZE != 256) {
 		bank = FLASH_BANK_1;
 		page = 64;
 	}
-
+#endif
 	(void)new_app_size; // TODO: Only erase enough pages to fit the new app
 
 	timeout_configure_IWDT_slowest();
@@ -72,11 +76,15 @@ uint16_t flash_helper_erase_new_app(uint32_t new_app_size) {
 uint16_t flash_helper_erase_bootloader(void) {
 	uint32_t bank = FLASH_BANK_2;
 	uint32_t page = 316;
+#ifdef HW_MCU_STM32L431
+	bank = FLASH_BANK_1;
+	page = 124;
+#else
 	if (*STM32_FLASH_SIZE != 256) {
 		bank = FLASH_BANK_1;
 		page = 124;
 	}
-
+#endif
 	timeout_configure_IWDT_slowest();
 
 	HAL_FLASH_Unlock();
