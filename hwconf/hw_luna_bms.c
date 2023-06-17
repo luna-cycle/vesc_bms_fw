@@ -231,24 +231,24 @@ static THD_FUNCTION(precharge_thread, arg) {
 
 					sleep_reset();
 					if( UTILS_AGE_S(prech_thresold_time) > PRECHARGE_TIMEOUT && precharge_temp < PRECHARGE_TEMP_MAX 
-					&& precharge_current < PRECHARGE_OC) {
-						PRECHARGE_STATUS = PRECH_WAIT_FOR_IDLE;
-						bq_allow_discharge(true);
-						precharge_reconnect_atempt = 0;
-						chThdSleepMilliseconds(300);
+					/*&& precharge_current < PRECHARGE_OC*/) {
+						if ( precharge_current >= PRECHARGE_OC) {
+								PRECHARGE_STATUS = PRECH_OC_FAULT;
+								bq_allow_discharge(false);
+								PRECHARGE_OFF();
+								bms_if_fault_report(FAULT_CODE_PRECH_OC);
+						} else {
+							PRECHARGE_STATUS = PRECH_WAIT_FOR_IDLE;
+							bq_allow_discharge(true);
+							precharge_reconnect_atempt = 0;
+							chThdSleepMilliseconds(300);
+						}
 					} else {
 						if ( precharge_temp >= PRECHARGE_TEMP_MAX ) {
 							PRECHARGE_STATUS = PRECH_TEMP_FAULT;
 							bq_allow_discharge(false);
 							PRECHARGE_OFF();
 							bms_if_fault_report(FAULT_CODE_PRECH_OT);
-						} else {
-							if ( precharge_current >= PRECHARGE_OC) {
-								PRECHARGE_STATUS = PRECH_OC_FAULT;
-								bq_allow_discharge(false);
-								PRECHARGE_OFF();
-								bms_if_fault_report(FAULT_CODE_PRECH_OC);
-							}	
 						}
 					}
 				break;
@@ -258,7 +258,7 @@ static THD_FUNCTION(precharge_thread, arg) {
 					if( bms_if_get_bms_state() == BMS_IDLE && precharge_temp < PRECHARGE_TEMP_MAX 
 					&& precharge_current < PRECHARGE_OC) {
 						PRECHARGE_STATUS = PRECH_IDLE;
-						bq_allow_discharge(false);			
+						bq_allow_discharge(false);
 					} else {
 						if ( precharge_temp >= PRECHARGE_TEMP_MAX ) {
 							PRECHARGE_STATUS = PRECH_TEMP_FAULT;
@@ -297,20 +297,21 @@ static THD_FUNCTION(precharge_thread, arg) {
 					for ( precharge_reconnect_timeout = (RECONNECTION_TIMEOUT * 10) ; precharge_reconnect_timeout > 0 ; 
 						precharge_reconnect_timeout-- ) {
 						sleep_reset();
-						chThdSleepMilliseconds(100);
+						chThdSleepMilliseconds(200);
 					}
 
 					PRECHARGE_ON();
 					precharge_reconnect_atempt++;
 					
-					if(precharge_reconnect_atempt > 3){
-						while(HW_LOAD_DETECTION()){			// if max attempt reached, wait for load removal. Is considered a
+					
+					/*if( precharge_reconnect_atempt > 3 ){
+						while( HW_LOAD_DETECTION() ){			// if max attempt reached, wait for load removal. Is considered a
 							sleep_reset();					// critical fault so bms must be stay here until load
 							precharge_reconnect_atempt = 0;	// is removed.
 							chThdSleepMilliseconds(1000);	// if no load detection is implemented, the bms
 															//will continue to attempt connection every RECONNECTION_TIMEOUT
 						}
-					}
+					}*/
 					PRECHARGE_STATUS = PRECH_IDLE;
 
 				break;
