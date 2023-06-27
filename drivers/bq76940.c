@@ -531,7 +531,6 @@ void bq_connect_pack(bool request) {
 	if(request) {
 		if( bq76940->connect_only_charger ) {
 			bq_discharge_disable();
-			bq_charge_enable();
 		} else {
 			if( bq76940->discharge_allowed ) { //ask for precharge condition
 				bq_discharge_enable();
@@ -540,7 +539,6 @@ void bq_connect_pack(bool request) {
 			}
 			bq_charge_enable();
 		}
-
 	} else {
 		bq_discharge_disable();
 		bq_charge_disable();
