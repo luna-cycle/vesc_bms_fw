@@ -254,9 +254,9 @@ static THD_FUNCTION(charge_discharge_thd,p){
 			aux_temp_limit = HW_MAX_CELL_TEMP_CHARG;
 		}
 		else{
-			aux_temp_limit = HW_MAX_CELL_TEMP_DISCH;	
+			aux_temp_limit = HW_MAX_CELL_TEMP_DISCH;
 		}
-		
+
 		if ( (HW_TEMP_CELLS_MAX() >= aux_temp_limit) && (flag_temp_OT_cell_fault == 0)) {
 			bms_if_fault_report(FAULT_CODE_CELL_OVERTEMP);
 			if(BMS_state == BMS_CHARGING){
@@ -402,7 +402,7 @@ static THD_FUNCTION(charge_discharge_thd,p){
 						IDLE_timer = chVTGetSystemTimeX();
 						IDLE_check_time = FALSE;
 					}
-					if( UTILS_AGE_S(IDLE_timer) >  HW_IDLE_TIMEOUT ) 
+					if( UTILS_AGE_S(IDLE_timer) >  HW_IDLE_TIMEOUT )
 						BMS_state = BMS_IDLE;//between -HW_IDLE_CURR_THRESHOLD and HW_IDLE_CURR_THRESHOLD is considered adc noise, with no faults and no current bms is IDLE
 				}
 			}
@@ -496,27 +496,14 @@ static THD_FUNCTION(charge_discharge_thd,p){
 
 					case FAULT_CODE_DISCHARGE_OVERCURRENT:
 						HW_PACK_DISCONNECT(); // disconnect pack and wait for reconnection time out, at this point the AFE should have disconnected the pack, this is redundant
-						if ( oc_sc_count_attempt >= MAX_RECONNECT_ATTEMPT ) {
-																// wait for the current to ramp down
-							while(HW_LOAD_DETECTION()){			// if max attempt reached, wait for load removal. Is considered a
-								sleep_reset();					// critical fault so bms must be stay here until load
-								oc_sc_count_attempt = 0;		// is removed.
-								chThdSleepMilliseconds(1000);	// if no load detection is implemented, the bms
-																//will continue to attempt connection every RECONNECTION_TIMEOUT
-							}
+						if(HW_LOAD_DETECTION()){			// if max attempt reached, wait for load removal. Is considered a
+							sleep_reset();					// critical fault so bms must be stay here until load is removed.
+							chThdSleepMilliseconds(1000);	// if no load detection is implemented, the bms will continue to attempt connection every RECONNECTION_TIMEOUT
+						} else {
 							flag_OC_discharge_fault = 0;
 							flag_SC_discharge_fault = 0;
 							HW_SC_OC_RESTORE();
-						} else {
-							//wait for reconnection timeout
-							for ( timeout = (RECONNECTION_TIMEOUT * 10) ; timeout > 0 ; timeout-- ) {
-								chThdSleepMilliseconds(100);
-								sleep_reset();
-							}
-							HW_SC_OC_RESTORE();
-							HW_PACK_CONNECT();
-							oc_sc_count_attempt++;
-						}
+						}	
 					break;
 
 					case FAULT_CODE_CELL_UNDERVOLTAGE:
@@ -528,7 +515,7 @@ static THD_FUNCTION(charge_discharge_thd,p){
 						if(UTILS_AGE_S(UV_timer) > HW_UV_TIMEOUT){
 							HW_SHUT_DOWN();
 						}
-							
+
 						// check for in current
 						if(current_now > 0.1){// incoming current, pack is charging
 							HW_PACK_CONN_ONLY_CHARGE(false);// connect discharge and charge ports
@@ -674,7 +661,7 @@ static THD_FUNCTION(balance_thd, p) {
 				v_min = HW_LAST_CELL_VOLTAGE(i);
 			}
 		}
-		
+
 		balance_end = backup.config.vc_balance_end;
 		balance_start = backup.config.vc_balance_start;
 
@@ -1327,3 +1314,13 @@ float bms_if_get_connector_temp() {
 float bms_if_get_vreg_temp () {
 	return HW_VREGULATOR_TEMP();
 }
+
+#ifdef USE_PRECHARGE
+bool hw_luna_has_detected_oc_sc(){
+	if(flag_SC_discharge_fault || flag_OC_discharge_fault){
+		return true;
+	} else {
+		return false;
+	}		
+}
+#endif

@@ -53,6 +53,10 @@ __attribute__((section(".ram4"))) volatile backup_data backup;
 int main(void) {
 
 	halInit();
+#ifdef USE_PRECHARGE
+	palSetLineMode(PRECHARGE_ENABLE_LINE, PAL_MODE_OUTPUT_PUSHPULL);
+	palSetLine(PRECHARGE_ENABLE_LINE);
+#endif
 	chSysInit();
 
 	// Stop debug mode in case no power cycle has been done after upload. This
