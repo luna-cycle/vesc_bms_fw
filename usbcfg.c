@@ -15,7 +15,7 @@
  */
 
 #include "hal.h"
-
+#if (HAL_USE_USB == TRUE)
 /* Virtual serial port over USB.*/
 SerialUSBDriver SDU1;
 
@@ -362,3 +362,4 @@ void usb_cdc_init(void) {
 int usb_cdc_configured_cnt(void) {
 	return configured_cnt;
 }
+#endif

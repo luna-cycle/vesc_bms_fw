@@ -51,6 +51,7 @@ __attribute__((section(".ram4"))) volatile backup_data backup;
 #define CAN_FRAME_MAX_PL_SIZE		8
 
 int main(void) {
+
 	halInit();
 	chSysInit();
 
@@ -162,8 +163,9 @@ int main(void) {
 	// USB needs some time to detect if a cable is connected, so start it before powering the regulators
 	// to not waste too much power.
 	commands_init();
+#if(HAL_USE_USB == TRUE)
 	comm_usb_init();
-
+#endif
 	// Only wait for USB every 3 boots
 	if (backup.usb_cnt >= 3) {
 		chThdSleepMilliseconds(500);

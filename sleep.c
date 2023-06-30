@@ -97,8 +97,9 @@ static THD_FUNCTION(sleep_thread, arg) {
 	(void)arg;
 
 	chRegSetThreadName("Sleep");
-
+#if(HAL_USE_USB == TRUE)
 	bool usb_conf_reset = false;
+#endif
 
 	for(;;) {
 		if (m_sleep_timer > 0) {
@@ -108,11 +109,11 @@ static THD_FUNCTION(sleep_thread, arg) {
 			if (blink > 500) {
 				blink = 0;
 			}
-
+#if(HAL_USE_USB == TRUE)
 			if (usb_cdc_configured_cnt() > 0 && blink > 200) {
 				blink = 0;
 			}
-
+#endif
 			if (blink < 40) {
 				LED_ON(LINE_LED_GREEN);
 			} else {
@@ -122,12 +123,12 @@ static THD_FUNCTION(sleep_thread, arg) {
 			LED_OFF(LINE_LED_GREEN);
 			go_to_sleep();
 		}
-
+#if(HAL_USE_USB == TRUE)
 		if (!usb_conf_reset && usb_cdc_configured_cnt() > 0) {
 			m_sleep_timer = 240000;
 			usb_conf_reset = true;
 		}
-
+#endif
 		timeout_feed_WDT(THREAD_SLEEP);
 
 		chThdSleepMilliseconds(1);
