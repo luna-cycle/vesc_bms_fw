@@ -35,9 +35,9 @@
 #include <math.h>
 
 // Settings
-#define I_IN_FILTER_CONST			0.006
-#define I_IN_FILTER_CONST_IC		0.006
-#define IC_ISENSE_I_GAIN_CORR		0.997 // This gain correction is a hack and should probably be set in config or in hw config
+//#define I_IN_FILTER_CONST			0.001//0.006
+//#define I_IN_FILTER_CONST_IC		0.001//0.006
+//#define IC_ISENSE_I_GAIN_CORR		0.997 // This gain correction is a hack and should probably be set in config or in hw config
 
 
 // Private variables

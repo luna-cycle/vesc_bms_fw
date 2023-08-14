@@ -260,4 +260,15 @@
 // Functions
 uint8_t hw_id_from_uuid(void);
 
+//current sense settings
+#ifndef I_IN_FILTER_CONST
+#define I_IN_FILTER_CONST			0.006
+#endif
+#ifndef I_IN_FILTER_CONST_IC
+#define I_IN_FILTER_CONST_IC		0.006
+#endif
+#ifndef IC_ISENSE_I_GAIN_CORR
+#define IC_ISENSE_I_GAIN_CORR		0.997 
+#endif
+
 #endif /* HWCONF_HW_H_ */

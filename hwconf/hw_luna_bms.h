@@ -56,7 +56,7 @@
 #define HW_MAX_CELL_TEMP_DISCH  55.0    //max cell temp during discharge, TODO add this parameter in VESC_TOOL
 #define HW_FORCE_BALANCE_V      4.2     //force balance if any cell is above this voltage [V]
 #define HW_UV_TIMEOUT           10.0    //if UV is manteined during this amount of time, enter in ship mode [s]
-#define HW_IDLE_CURR_THRESHOLD  0.035   //if abs current is beolw this threshold the bms is considered in IDLE state [A]
+#define HW_IDLE_CURR_THRESHOLD  0.01    //if abs current is beolw this threshold the bms is considered in IDLE state [A]
 #define HW_IDLE_TIMEOUT         1.0     //the current must be under min threshold during this amount of time to consider BMS in IDLE state [s]
 #define HW_SOC_MAX_V            4.2      //nominal min cell voltage used for SOC estimation [V]
 #define HW_SOC_MIN_V            2.8      //nominal cell voltage used for SOC estimation [V]
@@ -258,7 +258,7 @@
 #define ADC_PRECHARGE_I_LINE			PAL_LINE(GPIOC, 0)
 #define ADC_PRECH_RES_TEMP_LINE			PAL_LINE(GPIOB, 1)
 #define PRECHARGE_ENABLE_LINE			PAL_LINE(GPIOB, 0)
-#define PRECHARGE_CURRENT_THRESHOLD 	0.035 // [A]
+#define PRECHARGE_CURRENT_THRESHOLD 	0.020 // [A]
 #define PRECHARGE_TEMP_MAX 				60.0 // precharge resistor temp [�C]
 #define PRECHARGE_TEMP_HYST				0.8	// precharge temp hysteresis
 #define PRECHARGE_TIMEOUT               0.1 // precharge time to open discharge [s]
@@ -266,6 +266,11 @@
 #define PRECH_SHUNT                     0.5 // precharge currente shunt [ohm]
 #define PRECHARGE_ON()					palClearLine(PRECHARGE_ENABLE_LINE)
 #define PRECHARGE_OFF()					palSetLine(PRECHARGE_ENABLE_LINE)
+
+//current sense settings
+#define I_IN_FILTER_CONST			0.0005
+#define I_IN_FILTER_CONST_IC		0.0005
+#define IC_ISENSE_I_GAIN_CORR		0.997 
 
 float hw_luna_get_precharge_current(void);
 #endif
