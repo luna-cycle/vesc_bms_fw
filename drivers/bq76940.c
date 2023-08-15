@@ -367,27 +367,145 @@ static THD_FUNCTION(sample_thread, arg) {
 }
 
 uint8_t write_reg(uint8_t reg, uint16_t val) {
-	m_i2c.has_error = 0;
+
+	uint8_t error;
 	uint8_t txbuf[3];
 	uint8_t buff[4];
+	uint8_t retry = 0;
+	uint8_t key = 0x7;
 
 	buff[0] = BQ_I2C_ADDR << 1;
 	buff[1] = reg;
 	buff[2] = val;
-
 	txbuf[0] = reg;
 	txbuf[1] = val;
-	uint8_t key = 0x7;
 	txbuf[2] = CRC8(buff, 3, key);
 	i2cMasterTransmit(&I2CD2, BQ_I2C_ADDR, txbuf, 3, NULL, 0);
+	error = i2cGetErrors(&I2CD2);
 
-	return 0;
+	while( error != 0 ){// handle errors
+
+		buff[0] = BQ_I2C_ADDR << 1;
+		buff[1] = reg;
+		buff[2] = val;
+		txbuf[0] = reg;
+		txbuf[1] = val;
+		key = 0x7;
+		txbuf[2] = CRC8(buff, 3, key);
+		i2cMasterTransmit(&I2CD2, BQ_I2C_ADDR, txbuf, 3, NULL, 0);
+		error = i2cGetErrors(&I2CD2);
+		retry++;
+
+		if(retry > I2C_MAX_RETRY){
+			// enter in shipmode
+			// re write buffers for safety
+			buff[0] = BQ_I2C_ADDR << 1;
+			buff[1] = BQ_SYS_CTRL1;
+			buff[2] = 0x00;
+			txbuf[0] = BQ_SYS_CTRL1;
+			txbuf[1] = 0x00;
+			key = 0x7;
+			txbuf[2] = CRC8(buff, 3, key);
+			i2cMasterTransmit(&I2CD2, BQ_I2C_ADDR, txbuf, 3, NULL, 0);
+
+			buff[2] = 0x01;
+			txbuf[1] = 0x01;
+			txbuf[2] = CRC8(buff, 3, key);
+			i2cMasterTransmit(&I2CD2, BQ_I2C_ADDR, txbuf, 3, NULL, 0);
+
+			buff[2] = 0x02;
+			txbuf[1] = 0x02;
+			txbuf[2] = CRC8(buff, 3, key);
+			i2cMasterTransmit(&I2CD2, BQ_I2C_ADDR, txbuf, 3, NULL, 0);
+
+			// if ship mode atempt fails, reset MCU
+			backup.ah_cnt_init_flag = 0; // force to re load backup data from flash after reboot
+			backup.ah_cnt_init_flag  = 0;
+			backup.wh_cnt_init_flag  = 0;
+			backup.ic_i_sens_v_ofs_init_flag = 0;
+			backup.controller_id_init_flag = 0;
+			backup.send_can_status_rate_hz_init_flag = 0;
+			backup.can_baud_rate_init_flag = 0;
+			backup.conf_flash_write_cnt_init_flag = 0;
+			backup.usb_cnt_init_flag = 0;
+			backup.hw_config_init_flag = 0;
+			backup.ah_cnt_chg_total_init_flag = 0;
+			backup.wh_cnt_chg_total_init_flag = 0;
+			backup.ah_cnt_dis_total_init_flag = 0;
+			backup.wh_cnt_dis_total_init_flag = 0;
+			NVIC_SystemReset();
+		}
+	}
+
+	return error;
 }
 
 uint8_t read_reg(uint8_t reg){
-	uint8_t data;
-	i2cMasterTransmit(&I2CD2, BQ_I2C_ADDR, &reg, 1, &data, 2);
-	return data;
+	uint8_t data[2];
+	uint8_t buff[3];
+	uint8_t txbuf[3];
+	uint8_t crc;
+	uint8_t key = 0x7;
+	uint8_t error = 0;
+	uint8_t retry = 0;
+
+	i2cMasterTransmit(&I2CD2, BQ_I2C_ADDR, &reg, 1, data, 2);
+	buff[0] = (BQ_I2C_ADDR << 1) + 1;
+	buff[1] = data[0];
+	crc = CRC8(buff,2,key);
+	error = i2cGetErrors(&I2CD2);
+
+	while((crc != data[1]) || (error != 0)){
+		//handle CRC error
+
+		i2cMasterTransmit(&I2CD2, BQ_I2C_ADDR, &reg, 1, data, 2);
+		buff[0] = (BQ_I2C_ADDR << 1) + 1;
+		buff[1] = data[0];
+		crc = CRC8(buff,2,key);
+		error = i2cGetErrors(&I2CD2);
+		retry++;
+
+		if(retry > I2C_MAX_RETRY){
+
+			// enter in shipmode
+			buff[0] = BQ_I2C_ADDR << 1;
+			buff[1] = BQ_SYS_CTRL1;
+			buff[2] = 0x00;
+			txbuf[0] = BQ_SYS_CTRL1;
+			txbuf[1] = 0x00;
+			key = 0x7;
+			txbuf[2] = CRC8(buff, 3, key);
+			i2cMasterTransmit(&I2CD2, BQ_I2C_ADDR, txbuf, 3, NULL, 0);
+
+			buff[2] = 0x01;
+			txbuf[1] = 0x01;
+			txbuf[2] = CRC8(buff, 3, key);
+			i2cMasterTransmit(&I2CD2, BQ_I2C_ADDR, txbuf, 3, NULL, 0);
+
+			buff[2] = 0x02;
+			txbuf[1] = 0x02;
+			txbuf[2] = CRC8(buff, 3, key);
+			i2cMasterTransmit(&I2CD2, BQ_I2C_ADDR, txbuf, 3, NULL, 0);
+
+			// if ship mode atempt fails, reset MCU
+			backup.ah_cnt_init_flag = 0; // force to re load backup data from flash after reboot
+			backup.ah_cnt_init_flag  = 0;
+			backup.wh_cnt_init_flag  = 0;
+			backup.ic_i_sens_v_ofs_init_flag = 0;
+			backup.controller_id_init_flag = 0;
+			backup.send_can_status_rate_hz_init_flag = 0;
+			backup.can_baud_rate_init_flag = 0;
+			backup.conf_flash_write_cnt_init_flag = 0;
+			backup.usb_cnt_init_flag = 0;
+			backup.hw_config_init_flag = 0;
+			backup.ah_cnt_chg_total_init_flag = 0;
+			backup.wh_cnt_chg_total_init_flag = 0;
+			backup.ah_cnt_dis_total_init_flag = 0;
+			backup.wh_cnt_dis_total_init_flag = 0;
+			NVIC_SystemReset();
+		}
+	}
+	return data[0];
 }
 
 int8_t bq_read_gain(float *gain){

@@ -34,6 +34,8 @@
 #define SYS_STAT_SCD	0x02
 #define SYS_STAT_OCD	0x01
 
+#define I2C_MAX_RETRY   10 // max I2C communication retry
+
 // SCP config
 #define BQ_SCP_70us		(0x00 << 3)
 #define BQ_SCP_100us	(0x01 << 3)
