@@ -27,12 +27,14 @@
 #define TEMP_SEL		0x08
 #define CC_EN			0x40
 #define CC_DIS			0x00
+#define CC_DIS_MASK     0xBF
 #define SYS_STAT_DEVICE_XREADY	0x20
 #define SYS_STAT_OVRD_ALERT		0x10
 #define SYS_STAT_UV		0x08
 #define SYS_STAT_OV		0x04
 #define SYS_STAT_SCD	0x02
 #define SYS_STAT_OCD	0x01
+
 
 #define I2C_MAX_RETRY   10 // max I2C communication retry
 

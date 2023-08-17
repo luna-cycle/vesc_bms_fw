@@ -78,7 +78,7 @@
 #define HW_GET_I_IN()				bq_get_current()		//this hw wont read current using the mcu adc for the forseeable future
 #define HW_GET_I_IN_AFE				i_bms_ic = bq_get_current()
 #define HW_ZERO_CURRENT_OFFSET		bq_get_CC_raw()
-#define HW_AFE_SLEEP()				//sleep_bq76940()
+#define HW_AFE_SLEEP()				sleep_bq76940()
 #define HW_GET_BAL_TEMP()			hw_luna_get_bal_temp()
 #define HW_MOSFET_SENSOR()			hw_luna_get_temp(6)		// return mosfet temp
 #define HW_CONNECTOR_TEMP()			hw_luna_get_connector_temp()

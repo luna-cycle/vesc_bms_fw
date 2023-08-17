@@ -41,6 +41,12 @@
 #define CC_REG_TO_AMPS_FACTOR   0.00000844
 #define CC_VBAT_TO_VOLTS_FACTOR 0.001532
 
+#define PROTECT1_SEL		(CURRENT_112A | BQ_SCP_70us)
+#define PROTECT2_SEL		(CURRENT_72A | BQ_OCP_640ms)
+#define PROTECT3_SEL		(BQ_UV_DELAY_1s | BQ_OV_DELAY_1s)
+#define OV_TRIP_SEL			tripVoltage(HW_MAX_CELL)
+#define UV_TRIP_SEL			tripVoltage(HW_MIN_CELL)
+
 // Private variables
 static i2c_bb_state  m_i2c;
 static float m_v_cell[MAX_CELL_NUM];
@@ -164,7 +170,16 @@ uint8_t bq76940_init(void) {
 	// if we want to change the AFE configuration we have to reset it to default values and then it will be
 	// rećonfigured on the next MCU reset.
 	//TODO: #define registers values
-	if( ( (read_reg(BQ_SYS_CTRL1) & ADC_EN) == 0x00) || (read_reg(BQ_SYS_CTRL2) == 0x00) ) {	//ADC_EN '1' in normal mode
+	// enable countinous reading of the Coulomb Counter
+	uint8_t val = read_reg(BQ_SYS_CTRL2);
+	val = val | CC_EN;
+	write_reg(BQ_SYS_CTRL2, val);	// sets ALERT at 250ms interval
+	// write 0x19 to CC_CFG according to datasheet page 39
+	write_reg(BQ_CC_CFG, 0x19);
+
+	if( ( (read_reg(BQ_PROTECT1)) != PROTECT1_SEL)  || (read_reg(BQ_PROTECT2) != PROTECT1_SEL) ||
+			(read_reg(BQ_PROTECT3) != PROTECT3_SEL) || (read_reg(BQ_OV_TRIP) != OV_TRIP_SEL) ||
+			(read_reg(BQ_UV_TRIP) != UV_TRIP_SEL) || (read_reg(BQ_SYS_CTRL1) == 0x0) ) {
 		// enable ADC and thermistors
 		error |= write_reg(BQ_SYS_CTRL1, (ADC_EN | TEMP_SEL));
 
@@ -172,18 +187,17 @@ uint8_t bq76940_init(void) {
 		error |= write_reg(BQ_CC_CFG, 0x19);
 
 		//OverVoltage threshold
-		error |= write_reg(BQ_OV_TRIP, tripVoltage(HW_MAX_CELL));
-		error |= write_reg(BQ_PROTECT3, BQ_OV_DELAY_1s);
+		error |= write_reg(BQ_OV_TRIP, OV_TRIP_SEL);
 		//UnderVoltage threshold
-		error |= write_reg(BQ_UV_TRIP, tripVoltage(HW_MIN_CELL));
-		error |= write_reg(BQ_PROTECT3, BQ_UV_DELAY_1s);
+		error |= write_reg(BQ_UV_TRIP, UV_TRIP_SEL);
+		error |= write_reg(BQ_PROTECT3, PROTECT3_SEL);
 
 		// Overcurrent protection
-		error |= write_reg(BQ_PROTECT2, (CURRENT_72A | BQ_OCP_640ms ));
+		error |= write_reg(BQ_PROTECT2, PROTECT2_SEL);
 		// Short Circuit Protection
 		//You can set the shortcircuit protection with ...
 		//The delay time could be 70us, 100us, 200us or 400 us
-		error |= write_reg(BQ_PROTECT1, (CURRENT_112A | BQ_SCP_70us ));
+		error |= write_reg(BQ_PROTECT1, PROTECT1_SEL);
 
 		// clear SYS-STAT for init
 		write_reg(BQ_SYS_STAT,0xFF);
@@ -785,7 +799,9 @@ static void read_v_batt(volatile float *v_bat) {
 }
 
 void sleep_bq76940() {
-	write_reg(BQ_SYS_CTRL1, (ADC_DIS | TEMP_SEL));
+	uint8_t val = read_reg(BQ_SYS_CTRL2);
+	val = val & CC_DIS_MASK;
+	write_reg(BQ_SYS_CTRL2, val);
 }
 
 void bq_shutdown_bq76940(void) {
