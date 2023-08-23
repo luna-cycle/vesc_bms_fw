@@ -56,6 +56,34 @@ void hw_luna_init(void){
 #ifdef HW_USE_WKP2
 	PWR->PUCRC |= PWR_PUCRC_PC13; //wkp2 pin (PC13) pull up
 #endif
+	// config un used pins
+	// declare as input, this saves the schmitt current consumption
+	palSetLineMode(PA8, PAL_MODE_INPUT_ANALOG);
+	palSetLineMode(PA9, PAL_MODE_INPUT_ANALOG);
+	palSetLineMode(PA10, PAL_MODE_INPUT_ANALOG);
+#if(HAL_USE_USB == FALSE)
+	palSetLineMode(PA11, PAL_MODE_INPUT_ANALOG);
+	palSetLineMode(PA12, PAL_MODE_INPUT_ANALOG);
+#endif
+	palSetLineMode(PA15, PAL_MODE_INPUT_ANALOG);
+	palSetLineMode(PB3, PAL_MODE_INPUT_ANALOG);
+	palSetLineMode(PB4, PAL_MODE_INPUT_ANALOG);
+	palSetLineMode(PB5, PAL_MODE_INPUT_ANALOG);
+	palSetLineMode(PB6, PAL_MODE_INPUT_ANALOG);
+	palSetLineMode(PB7, PAL_MODE_INPUT_ANALOG);
+	palSetLineMode(PB12, PAL_MODE_INPUT_ANALOG);
+	palSetLineMode(PB13, PAL_MODE_INPUT_ANALOG);
+	palSetLineMode(PB15, PAL_MODE_INPUT_ANALOG);
+	palSetLineMode(PC4, PAL_MODE_INPUT_ANALOG);
+	palSetLineMode(PC6, PAL_MODE_INPUT_ANALOG);
+	palSetLineMode(PC7, PAL_MODE_INPUT_ANALOG);
+	palSetLineMode(PC8, PAL_MODE_INPUT_ANALOG);
+	palSetLineMode(PC9, PAL_MODE_INPUT_ANALOG);
+	palSetLineMode(PC10, PAL_MODE_INPUT_ANALOG);
+	palSetLineMode(PC11, PAL_MODE_INPUT_ANALOG);
+	palSetLineMode(PC12, PAL_MODE_INPUT_ANALOG);
+	palSetLineMode(PD2, PAL_MODE_INPUT_ANALOG);
+
 }
 
 float hw_luna_get_cell_temp_max(void) {

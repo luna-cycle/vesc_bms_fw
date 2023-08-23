@@ -114,7 +114,7 @@ static THD_FUNCTION(sleep_thread, arg) {
 				blink = 0;
 			}
 #endif
-			if (blink < 40) {
+			if (blink < 10) {
 				LED_ON(LINE_LED_GREEN);
 			} else {
 				LED_OFF(LINE_LED_GREEN);

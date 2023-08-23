@@ -277,6 +277,33 @@ float hw_luna_get_precharge_current(void);
 //	Charger Detection
 #define LINE_CHG_DETECTION		PAL_LINE(GPIOB, 3)
 
+// Unused lines
+#define PA8         PAL_LINE(GPIOA,8)
+#define PA9         PAL_LINE(GPIOA,9)
+#define PA10        PAL_LINE(GPIOA,10)
+#if(HAL_USE_USB == FALSE)
+#define PA11        PAL_LINE(GPIOA,11)
+#define PA12        PAL_LINE(GPIOA,12)
+#endif
+#define PA15        PAL_LINE(GPIOA,15)
+#define PB3         PAL_LINE(GPIOB,3)
+#define PB4         PAL_LINE(GPIOB,4)
+#define PB5         PAL_LINE(GPIOB,5)
+#define PB6         PAL_LINE(GPIOB,6)
+#define PB7         PAL_LINE(GPIOB,7)
+#define PB12        PAL_LINE(GPIOB,12)
+#define PB13        PAL_LINE(GPIOB,13)
+#define PB15        PAL_LINE(GPIOB,15)
+#define PC4         PAL_LINE(GPIOC,4)
+#define PC6         PAL_LINE(GPIOC,6)
+#define PC7         PAL_LINE(GPIOC,7)
+#define PC8         PAL_LINE(GPIOC,8)
+#define PC9         PAL_LINE(GPIOC,9)
+#define PC10        PAL_LINE(GPIOC,10)
+#define PC11        PAL_LINE(GPIOC,11)
+#define PC12        PAL_LINE(GPIOC,12)
+#define PD2         PAL_LINE(GPIOD,2)
+
 void hw_luna_init(void);
 float hw_luna_get_temp(int sensors);
 float hw_luna_get_cell_temp_max(void);
