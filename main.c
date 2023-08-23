@@ -169,7 +169,6 @@ int main(void) {
 	commands_init();
 #if(HAL_USE_USB == TRUE)
 	comm_usb_init();
-#endif
 	// Only wait for USB every 3 boots
 	if (backup.usb_cnt >= 3) {
 		chThdSleepMilliseconds(500);
@@ -177,7 +176,7 @@ int main(void) {
 	} else {
 		backup.usb_cnt++;
 	}
-
+#endif
 	pwr_init();
 	HW_AFE_INIT();
 	bms_if_init();
