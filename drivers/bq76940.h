@@ -201,4 +201,5 @@ void bq_allow_discharge(bool);
 float bq_get_fault_data_current(void);
 float bq_get_fault_data_UV(void);
 float bq_get_fault_data_OV(void);
+void bq76940_wfe(void);
 #endif /* BQ76940_H_ */

@@ -170,6 +170,7 @@ uint8_t bq76940_init(void) {
 	// if we want to change the AFE configuration we have to reset it to default values and then it will be
 	// rećonfigured on the next MCU reset.
 	//TODO: #define registers values
+
 	// enable countinous reading of the Coulomb Counter
 	uint8_t val = read_reg(BQ_SYS_CTRL2);
 	val = val | CC_EN;
@@ -177,9 +178,16 @@ uint8_t bq76940_init(void) {
 	// write 0x19 to CC_CFG according to datasheet page 39
 	write_reg(BQ_CC_CFG, 0x19);
 
-	if( ( (read_reg(BQ_PROTECT1)) != PROTECT1_SEL)  || (read_reg(BQ_PROTECT2) != PROTECT1_SEL) ||
+	//Connect the pack
+	bq76940->request_connection_pack  = true;
+	bq76940->discharge_allowed = false;
+	bq_connect_pack(true);
+	//bq76940_wfe();// sleep until alert pin is high
+
+	if( ( (read_reg(BQ_PROTECT1)) != PROTECT1_SEL)  || (read_reg(BQ_PROTECT2) != PROTECT2_SEL) ||
 			(read_reg(BQ_PROTECT3) != PROTECT3_SEL) || (read_reg(BQ_OV_TRIP) != OV_TRIP_SEL) ||
 			(read_reg(BQ_UV_TRIP) != UV_TRIP_SEL) || (read_reg(BQ_SYS_CTRL1) == 0x0) ) {
+
 		// enable ADC and thermistors
 		error |= write_reg(BQ_SYS_CTRL1, (ADC_EN | TEMP_SEL));
 
@@ -802,6 +810,8 @@ void sleep_bq76940() {
 	uint8_t val = read_reg(BQ_SYS_CTRL2);
 	val = val & CC_DIS_MASK;
 	write_reg(BQ_SYS_CTRL2, val);
+	//write_reg(BQ_SYS_STAT,0xFF);
+	bq_charge_disable();
 }
 
 void bq_shutdown_bq76940(void) {
@@ -873,3 +883,11 @@ float bq_get_fault_data_OV(void){
 }
 #endif
 
+void bq76940_wfe(void){
+	//PWR->CR4 |= PWR_CR4_WP4;//wkp event rising edge
+	PWR->CR3 |= PWR_CR3_EWUP4;// Enable Wakeup pin WKUP4
+	PWR->SCR |= PWR_SCR_CWUF; // clear wkp flags
+	PWR->CR1 |= PWR_CR1_LPMS_STOP2;// select lowpower mode STOP2, SRAM1, SRAM2 and register are preserved
+	SCB->SCR |= SCB_SCR_SLEEPDEEP_Msk;// enable low power mode
+	__WFE();// wait for event
+}
