@@ -181,7 +181,10 @@ uint8_t bq76940_init(void) {
 	//Connect the pack
 	bq76940->request_connection_pack  = true;
 	bq76940->discharge_allowed = false;
-	bq_connect_pack(true);
+	if((PWR->SR1 & 0x1) ){
+		sleep_reset();
+	}
+
 	//bq76940_wfe();// sleep until alert pin is high
 
 	if( ( (read_reg(BQ_PROTECT1)) != PROTECT1_SEL)  || (read_reg(BQ_PROTECT2) != PROTECT2_SEL) ||
@@ -807,11 +810,15 @@ static void read_v_batt(volatile float *v_bat) {
 }
 
 void sleep_bq76940() {
-	uint8_t val = read_reg(BQ_SYS_CTRL2);
-	val = val & CC_DIS_MASK;
-	write_reg(BQ_SYS_CTRL2, val);
-	//write_reg(BQ_SYS_STAT,0xFF);
-	bq_charge_disable();
+
+	while(read_reg(BQ_SYS_CTRL2) != 0x0){// read CTR2 reg to be sure that CHG is disable
+		write_reg(BQ_SYS_CTRL2, 0x0);
+	}
+	while( !palReadPad(GPIOA,2U) ){
+
+	}
+	write_reg(BQ_SYS_STAT,0xFF);
+
 }
 
 void bq_shutdown_bq76940(void) {
@@ -881,7 +888,6 @@ float bq_get_fault_data_UV(void){
 float bq_get_fault_data_OV(void){
 	return bq76940->fault_v_max;
 }
-#endif
 
 void bq76940_wfe(void){
 	//PWR->CR4 |= PWR_CR4_WP4;//wkp event rising edge
@@ -889,5 +895,6 @@ void bq76940_wfe(void){
 	PWR->SCR |= PWR_SCR_CWUF; // clear wkp flags
 	PWR->CR1 |= PWR_CR1_LPMS_STOP2;// select lowpower mode STOP2, SRAM1, SRAM2 and register are preserved
 	SCB->SCR |= SCB_SCR_SLEEPDEEP_Msk;// enable low power mode
-	__WFE();// wait for event
+	__WFE();
 }
+#endif

@@ -37,6 +37,7 @@
 #ifdef USE_PRECHARGE
 #define ADC_CHANNELS 13
 #endif
+#define HW_USE_WKP1
 
 #define HW_MAX_TEMP_IC 			75.0	// AFE temp [°C]
 #define HW_MAX_MOSFET_TEMP		75.0	// MOSFET TEMP [°C]
@@ -155,10 +156,15 @@
 
 // LEDs
 
-#define LINE_LED_RED			PAL_LINE(GPIOA, 0)
-#define LINE_LED_GREEN			PAL_LINE(GPIOA, 1)
 
-#define LINE_LED_RED_DEBUG			PAL_LINE(GPIOA, 0)
+#define LINE_LED_GREEN			PAL_LINE(GPIOA, 1)
+#ifdef HW_USE_WKP1
+#define LINE_LED_RED			PAL_LINE(GPIOA, 8) // if WKP1 used RED led on PA8
+#define LINE_LED_RED_DEBUG	    PAL_LINE(GPIOA, 8)
+#else
+#define LINE_LED_RED			PAL_LINE(GPIOA, 0) // if WKP1 not used RED led on PA0
+#define LINE_LED_RED_DEBUG	    PAL_LINE(GPIOA, 0)
+#endif
 #define LINE_LED_GREEN_DEBUG		PAL_LINE(GPIOA, 1)
 #define LED_RED_DEBUG_OFF()			palClearLine(LINE_LED_RED_DEBUG)
 #define LED_RED_DEBUG_ON()			palSetLine(LINE_LED_RED_DEBUG)
@@ -166,7 +172,7 @@
 #define LED_GREEN_DEBUG_ON()		palSetLine(LINE_LED_GREEN_DEBUG)
 
 // BQ76200
-#define LINE_BQ_CHG_EN			PAL_LINE(GPIOB, 15)
+//#define LINE_BQ_CHG_EN			PAL_LINE(GPIOB, 15)
 #define LINE_BQ_CP_EN			PAL_LINE(GPIOB, 13)
 #define LINE_BQ_DSG_EN			PAL_LINE(GPIOB, 14)
 #define LINE_BQ_PMON_EN			PAL_LINE(GPIOB, 11)
