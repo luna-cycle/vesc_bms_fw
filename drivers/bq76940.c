@@ -320,6 +320,21 @@ void bq76940_Alert_handler(void) {
 		read_cell_voltages(m_v_cell); 	//read cell voltages
 		read_v_batt(&bq76940->pack_mv);		
 		i = 0;
+
+		// acquire min cell
+		v_aux = 100.0;
+		for (int i = backup.config.cell_first_index;i <
+		(backup.config.cell_num + backup.config.cell_first_index);i++) {
+			if (HW_LAST_CELL_VOLTAGE(i) < v_aux) {
+				v_aux = HW_LAST_CELL_VOLTAGE(i);
+			}
+		}
+
+		if(v_aux < HW_ABS_MIN_CELL) {
+			bq76940->fault_v_min = v_aux;
+			bq76940->UV_detected = true;
+			bq76940->request_connection_pack = false;
+		}
 	}
 	if( i <= 6 ){ //<1,5 seconds -> balance
 		bq_balance_cells(m_discharge_state, m_v_cell, m_discharge);	//configure balancing bits over i2c
