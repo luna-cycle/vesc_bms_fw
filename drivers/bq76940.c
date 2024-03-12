@@ -169,15 +169,15 @@ uint8_t bq76940_init(void) {
 	// If SYS_CTRL1 and SYS_CTRL2 are 0x00 it means that the AFE is not configured. Lets configure it.
 	// if we want to change the AFE configuration we have to reset it to default values and then it will be
 	// rećonfigured on the next MCU reset.
-	//TODO: #define registers values
+#ifdef HW_SLEEP_AFE
 	// enable countinous reading of the Coulomb Counter
 	uint8_t val = read_reg(BQ_SYS_CTRL2);
 	val = val | CC_EN;
 	write_reg(BQ_SYS_CTRL2, val);	// sets ALERT at 250ms interval
 	// write 0x19 to CC_CFG according to datasheet page 39
 	write_reg(BQ_CC_CFG, 0x19);
-
-	if( ( (read_reg(BQ_PROTECT1)) != PROTECT1_SEL)  || (read_reg(BQ_PROTECT2) != PROTECT1_SEL) ||
+#endif
+	if( ( (read_reg(BQ_PROTECT1)) != PROTECT1_SEL)  || (read_reg(BQ_PROTECT2) != PROTECT2_SEL) ||
 			(read_reg(BQ_PROTECT3) != PROTECT3_SEL) || (read_reg(BQ_OV_TRIP) != OV_TRIP_SEL) ||
 			(read_reg(BQ_UV_TRIP) != UV_TRIP_SEL) || (read_reg(BQ_SYS_CTRL1) == 0x0) ) {
 		// enable ADC and thermistors
@@ -799,9 +799,12 @@ static void read_v_batt(volatile float *v_bat) {
 }
 
 void sleep_bq76940() {
+#ifdef HW_SLEEP_AFE
+	write_reg(BQ_SYS_CTRL1, (ADC_DIS | TEMP_SEL));
 	uint8_t val = read_reg(BQ_SYS_CTRL2);
 	val = val & CC_DIS_MASK;
 	write_reg(BQ_SYS_CTRL2, val);
+#endif
 }
 
 void bq_shutdown_bq76940(void) {
