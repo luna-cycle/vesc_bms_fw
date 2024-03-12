@@ -1314,13 +1314,3 @@ float bms_if_get_connector_temp() {
 float bms_if_get_vreg_temp () {
 	return HW_VREGULATOR_TEMP();
 }
-
-#ifdef USE_PRECHARGE
-bool hw_luna_has_detected_oc_sc(){
-	if(flag_SC_discharge_fault || flag_OC_discharge_fault){
-		return true;
-	} else {
-		return false;
-	}		
-}
-#endif
