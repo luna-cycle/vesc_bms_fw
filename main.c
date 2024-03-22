@@ -54,8 +54,8 @@ int main(void) {
 
 	halInit();
 #ifdef USE_PRECHARGE
+	palClearLine(PRECHARGE_ENABLE_LINE);
 	palSetLineMode(PRECHARGE_ENABLE_LINE, PAL_MODE_OUTPUT_PUSHPULL);
-	palSetLine(PRECHARGE_ENABLE_LINE);
 #endif
 	chSysInit();
 

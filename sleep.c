@@ -58,7 +58,6 @@ static void go_to_sleep(void) {
 	BQ_PCHG_OFF();
 #endif
 
-	TEMP_MEASURE_OFF();
 	HW_CAN_OFF();
 
 	LED_OFF(LINE_LED_RED);
@@ -90,6 +89,7 @@ static void go_to_sleep(void) {
 	PWR->SCR |= PWR_SCR_CWUF; // clear wkp flags
 #endif
 	SCB->SCR |= SCB_SCR_SLEEPDEEP_Msk;
+	TEMP_MEASURE_OFF();
 	__WFI();
 }
 

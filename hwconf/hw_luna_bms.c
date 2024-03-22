@@ -44,6 +44,7 @@ void hw_luna_init(void){
 	// Config precharge pins
 	palSetLineMode(ADC_PRECHARGE_I_LINE, PAL_MODE_INPUT_ANALOG);
 	palSetLineMode(ADC_PRECH_RES_TEMP_LINE, PAL_MODE_INPUT_ANALOG);
+	palClearLine(PRECHARGE_ENABLE_LINE);
 	palSetLineMode(PRECHARGE_ENABLE_LINE, PAL_MODE_OUTPUT_PUSHPULL);
 	PWR->PDCRB |= PWR_PDCRB_PB0; //PB0 precharge pin pull down during standby
 	PWR->CR3 |= PWR_CR3_APC;	// apply pull down configuration
