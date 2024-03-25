@@ -24,7 +24,7 @@
 #include "main.h"
 
 // Private variables
-static volatile int m_sleep_timer = 200;
+static volatile int m_sleep_timer = 300;
 
 // Private functions
 static void go_to_sleep(void);
@@ -63,12 +63,6 @@ static void go_to_sleep(void) {
 	LED_OFF(LINE_LED_RED);
 	LED_OFF(LINE_LED_GREEN);
 
-	bms_if_sleep();
-
-	for (volatile int i = 0;i < 1000;i++) {
-		__NOP();
-	}
-
 	do {
 		RTCD1.rtc->WPR = 0xCA;
 		RTCD1.rtc->WPR = 0x53;
@@ -78,7 +72,7 @@ static void go_to_sleep(void) {
 
 	RTCWakeup wakeupspec;
 	wakeupspec.wutr = ((uint32_t)4) << 16; // select 1 Hz clock source
-	wakeupspec.wutr |= 5; // Period will be 5+1 seconds.
+	wakeupspec.wutr |= 15; // Period will be 5+1 seconds.
 	rtcSTM32SetPeriodicWakeup(&RTCD1, &wakeupspec);
 
 	PWR->CR1 |= PWR_CR1_LPMS_STANDBY;
@@ -89,6 +83,7 @@ static void go_to_sleep(void) {
 	PWR->SCR |= PWR_SCR_CWUF; // clear wkp flags
 #endif
 	SCB->SCR |= SCB_SCR_SLEEPDEEP_Msk;
+	bms_if_sleep();
 	TEMP_MEASURE_OFF();
 	__WFI();
 }

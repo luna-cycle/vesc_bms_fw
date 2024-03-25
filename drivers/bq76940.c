@@ -233,7 +233,7 @@ void bq76940_Alert_handler(void) {
 	// Read Status Register
 	uint8_t sys_stat = read_reg(BQ_SYS_STAT);
 	float v_aux = 0.0;
-
+	bq76940->request_connection_pack = true; // by default connect
 	// Report fault codes
 	if ( sys_stat & SYS_STAT_DEVICE_XREADY ) {
 		//handle error
@@ -392,6 +392,7 @@ static THD_FUNCTION(sample_thread, arg) {
 		}
 		bq76940_Alert_handler();
 		chBSemSignal(&bq_alert_semph); // give semaphore
+		chThdSleepMilliseconds(1);
 	}
 }
 
@@ -814,6 +815,8 @@ static void read_v_batt(volatile float *v_bat) {
 }
 
 void sleep_bq76940() {
+	bq_connect_pack(FALSE);
+
 #ifdef HW_SLEEP_AFE
 	write_reg(BQ_SYS_CTRL1, (ADC_DIS | TEMP_SEL));
 	uint8_t val = read_reg(BQ_SYS_CTRL2);
