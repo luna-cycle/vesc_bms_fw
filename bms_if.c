@@ -287,6 +287,7 @@ static THD_FUNCTION(charge_discharge_thd,p){
 		}
 
 		float current_now = bms_if_get_i_in();
+
 		//check over current charge
 		if ( (current_now > backup.config.max_charge_current) && (flag_I_charge_fault == 0) ) {
 			bms_if_fault_report(FAULT_CODE_CHARGE_OVERCURRENT);
@@ -384,13 +385,17 @@ static THD_FUNCTION(charge_discharge_thd,p){
 		if( fabs_in_current > backup.config.min_current_sleep ) {
 			sleep_reset();// prevent sleeping
 		}
+		float curr_now_dsc = current_now;
+		if(!HW_IS_DSG_EN()){
+			curr_now_dsc = -HW_GET_PRECH_CURRENT();
+		}
 
 		// check current direction
-		if ( (current_now > HW_IDLE_CURR_THRESHOLD) && (FAULT_CODE == FAULT_CODE_NONE) ) {// incoming current, pack is charging
+		if ( (current_now > HW_IDLE_CURR_THR_CHG) && (FAULT_CODE == FAULT_CODE_NONE) ) {// incoming current, pack is charging
 			BMS_state = BMS_CHARGING;
 			IDLE_check_time = TRUE;
 		} else {
-			if ( (current_now < -HW_IDLE_CURR_THRESHOLD) && (FAULT_CODE == FAULT_CODE_NONE) ) { // out going current, pack is dischargin
+			if ( (curr_now_dsc < HW_IDLE_CURR_THR_DSG) && (FAULT_CODE == FAULT_CODE_NONE) ) { // out going current, pack is dischargin
 				BMS_state = BMS_DISCHARGIN;
 				IDLE_check_time = TRUE;
 			} else {

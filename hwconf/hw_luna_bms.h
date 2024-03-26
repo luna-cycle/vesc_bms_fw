@@ -57,7 +57,8 @@
 #define HW_MAX_CELL_TEMP_DISCH  55.0    //max cell temp during discharge, TODO add this parameter in VESC_TOOL
 #define HW_FORCE_BALANCE_V      4.2     //force balance if any cell is above this voltage [V]
 #define HW_UV_TIMEOUT           10.0    //if UV is manteined during this amount of time, enter in ship mode [s]
-#define HW_IDLE_CURR_THRESHOLD  0.01    //if abs current is beolw this threshold the bms is considered in IDLE state [A]
+#define HW_IDLE_CURR_THR_DSG    -0.01    //if current is beolw this threshold the bms is considered in IDLE state [A]
+#define HW_IDLE_CURR_THR_CHG    0.03
 #define HW_IDLE_TIMEOUT         1.0     //the current must be under min threshold during this amount of time to consider BMS in IDLE state [s]
 #define HW_SOC_MAX_V            4.2      //nominal min cell voltage used for SOC estimation [V]
 #define HW_SOC_MIN_V            2.8      //nominal cell voltage used for SOC estimation [V]
@@ -106,7 +107,7 @@
 #define HW_FAUTL_DATA_CC_IC()       bq_get_fault_data_current()
 #define HW_FAULT_DATA_UV()          bq_get_fault_data_UV()
 #define HW_FAULT_DATA_OV()          bq_get_fault_data_OV()
-
+#define HW_IS_DSG_EN()              bq_is_dsg_en()
 // Settings
 #define HW_ADC_TEMP_SENSORS		8// total temp sensors
 #define HW_MCU_ADC_TEMP_SENSOR	7// temp sensor conencted to the MCU ADC
@@ -118,7 +119,7 @@
 #define AFE						bq76940
 #define WOLF_REV3
 // Define the current with the shunt resistor value
-#define HW_SHUNT_RES			(0.0005)
+#define HW_SHUNT_RES			(0.001)//(0.0005)
 
 //More abstraction to setup the threshold shortcircuit current
 //Only if only the resistor shunt is 0.5mOhm
@@ -270,8 +271,8 @@
 #define PRECHARGE_OFF()					palSetLine(PRECHARGE_ENABLE_LINE)
 
 //current sense settings
-#define I_IN_FILTER_CONST			0.0005
-#define I_IN_FILTER_CONST_IC		0.0005
+#define I_IN_FILTER_CONST			0.006
+#define I_IN_FILTER_CONST_IC		0.006
 #define IC_ISENSE_I_GAIN_CORR		0.997 
 
 float hw_luna_get_precharge_current(void);

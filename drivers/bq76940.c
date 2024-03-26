@@ -892,5 +892,13 @@ float bq_get_fault_data_UV(void){
 float bq_get_fault_data_OV(void){
 	return bq76940->fault_v_max;
 }
+
+bool bq_is_dsg_en(void){
+#ifdef USE_PRECHARGE
+	return (bq76940->discharge_allowed & bq76940->discharge_enabled);
+#else
+	return bq76940->discharge_enabled;
+#endif
+}
 #endif
 
