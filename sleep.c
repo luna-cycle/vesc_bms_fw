@@ -24,8 +24,11 @@
 #include "main.h"
 
 // Private variables
+#ifdef HW_SLEEP_AFE
+static volatile int m_sleep_timer = 500;
+#else
 static volatile int m_sleep_timer = 300;
-
+#endif
 // Private functions
 static void go_to_sleep(void);
 
@@ -72,7 +75,7 @@ static void go_to_sleep(void) {
 
 	RTCWakeup wakeupspec;
 	wakeupspec.wutr = ((uint32_t)4) << 16; // select 1 Hz clock source
-	wakeupspec.wutr |= 15; // Period will be 5+1 seconds.
+	wakeupspec.wutr |= 19; // Period will be 19+1 seconds.
 	rtcSTM32SetPeriodicWakeup(&RTCD1, &wakeupspec);
 
 	PWR->CR1 |= PWR_CR1_LPMS_STANDBY;

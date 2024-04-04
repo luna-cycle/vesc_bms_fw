@@ -380,11 +380,6 @@ static THD_FUNCTION(charge_discharge_thd,p){
 			}
 		}
 
-		//check minumum sleep current
-		fabs_in_current = fabs(HW_GET_I_IN());
-		if( fabs_in_current > backup.config.min_current_sleep ) {
-			sleep_reset();// prevent sleeping
-		}
 		float curr_now_dsc = current_now;
 		if(!HW_IS_DSG_EN()){
 			curr_now_dsc = -HW_GET_PRECH_CURRENT();
@@ -393,10 +388,12 @@ static THD_FUNCTION(charge_discharge_thd,p){
 		// check current direction
 		if ( (current_now > HW_IDLE_CURR_THR_CHG) && (FAULT_CODE == FAULT_CODE_NONE) ) {// incoming current, pack is charging
 			BMS_state = BMS_CHARGING;
+			sleep_reset();
 			IDLE_check_time = TRUE;
 		} else {
 			if ( (curr_now_dsc < HW_IDLE_CURR_THR_DSG) && (FAULT_CODE == FAULT_CODE_NONE) ) { // out going current, pack is dischargin
 				BMS_state = BMS_DISCHARGIN;
+				sleep_reset();
 				IDLE_check_time = TRUE;
 			} else {
 				if ( FAULT_CODE != FAULT_CODE_NONE ) {
