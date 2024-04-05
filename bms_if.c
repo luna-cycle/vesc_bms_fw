@@ -386,7 +386,7 @@ static THD_FUNCTION(charge_discharge_thd,p){
 		}
 
 		// check current direction
-		if ( (current_now > HW_IDLE_CURR_THR_CHG) && (FAULT_CODE == FAULT_CODE_NONE) ) {// incoming current, pack is charging
+		if ( (HW_GET_I_IN() > HW_IDLE_CURR_THR_CHG) && (FAULT_CODE == FAULT_CODE_NONE) ) {// incoming current, pack is charging
 			BMS_state = BMS_CHARGING;
 			sleep_reset();
 			IDLE_check_time = TRUE;
