@@ -233,7 +233,10 @@ void bq76940_Alert_handler(void) {
 	// Read Status Register
 	uint8_t sys_stat = read_reg(BQ_SYS_STAT);
 	float v_aux = 0.0;
-	bq76940->request_connection_pack = true; // by default connect
+	if(bms_if_get_bms_state() != BMS_FAULT){ // BQ fault flags might be false but BMS_if has hysteresis condition before re connect
+		bq76940->request_connection_pack = true; // by default connect
+	}
+
 	// Report fault codes
 	if ( sys_stat & SYS_STAT_DEVICE_XREADY ) {
 		//handle error
