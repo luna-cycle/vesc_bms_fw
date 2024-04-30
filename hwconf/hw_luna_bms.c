@@ -59,12 +59,18 @@ void hw_luna_init(void){
 #endif
 	// config un used pins
 	// declare as input, this saves the schmitt current consumption
-	palSetLineMode(PA8, PAL_MODE_INPUT_ANALOG);
+
 	palSetLineMode(PA9, PAL_MODE_INPUT_ANALOG);
 	palSetLineMode(PA10, PAL_MODE_INPUT_ANALOG);
 #if(HAL_USE_USB == FALSE)
 	palSetLineMode(PA11, PAL_MODE_INPUT_ANALOG);
 	palSetLineMode(PA12, PAL_MODE_INPUT_ANALOG);
+#endif
+
+#ifdef HW_USE_WKP1
+	palSetLineMode(PA0, PAL_MODE_INPUT_PULLUP);
+#else
+	palSetLineMode(PA8, PAL_MODE_INPUT_ANALOG);
 #endif
 	palSetLineMode(PA15, PAL_MODE_INPUT_ANALOG);
 	palSetLineMode(PB3, PAL_MODE_INPUT_ANALOG);

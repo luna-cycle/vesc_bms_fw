@@ -37,6 +37,7 @@
 #ifdef USE_PRECHARGE
 #define ADC_CHANNELS 13
 #endif
+#define HW_USE_WKP1
 //#define HW_SLEEP_AFE                  //un-comment to shut down AFE CC and ADC during sleep
 
 #define HW_MAX_TEMP_IC 			75.0	// AFE temp [°C]
@@ -158,11 +159,16 @@
 
 // LEDs
 
-#define LINE_LED_RED			PAL_LINE(GPIOA, 0)
-#define LINE_LED_GREEN			PAL_LINE(GPIOA, 1)
 
-#define LINE_LED_RED_DEBUG			PAL_LINE(GPIOA, 0)
-#define LINE_LED_GREEN_DEBUG		PAL_LINE(GPIOA, 1)
+#define LINE_LED_GREEN			PAL_LINE(GPIOA, 1)
+#define LINE_LED_GREEN_DEBUG	PAL_LINE(GPIOA, 1)
+#ifdef HW_USE_WKP1
+#define LINE_LED_RED			PAL_LINE(GPIOA, 8)
+#define LINE_LED_RED_DEBUG		PAL_LINE(GPIOA, 8)
+#else
+#define LINE_LED_RED			PAL_LINE(GPIOA, 0)
+#define LINE_LED_RED_DEBUG		PAL_LINE(GPIOA, 0)
+#endif
 #define LED_RED_DEBUG_OFF()			palClearLine(LINE_LED_RED_DEBUG)
 #define LED_RED_DEBUG_ON()			palSetLine(LINE_LED_RED_DEBUG)
 #define LED_GREEN_DEBUG_OFF()		palClearLine(LINE_LED_GREEN_DEBUG)
@@ -278,8 +284,12 @@
 float hw_luna_get_precharge_current(void);
 #endif
 //	Charger Detection
-#define LINE_CHG_DETECTION		PAL_LINE(GPIOB, 3)
+#define LINE_CHG_DETECTION		PAL_LINE(GPIOB, 3) // this is not the charge detector for WKP
+                                                    //this is in case there's a circuit that sense the presence of a charger
 
+#ifdef HW_USE_WKP1
+#define PA0         PAL_LINE(GPIOA,0)
+#endif
 // Unused lines
 #define PA8         PAL_LINE(GPIOA,8)
 #define PA9         PAL_LINE(GPIOA,9)

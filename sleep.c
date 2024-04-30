@@ -85,6 +85,12 @@ static void go_to_sleep(void) {
 	PWR->CR3 |= PWR_CR3_EWUP2;
 	PWR->SCR |= PWR_SCR_CWUF; // clear wkp flags
 #endif
+#ifdef HW_USE_WKP1
+	PWR->PDCRA|= PWR_PDCRA_PA0; 	// PA0 pull down during sleep
+	PWR->CR4 |= PWR_CR4_WP1;
+	PWR->CR3 |= PWR_CR3_EWUP1;
+	PWR->SCR |= PWR_SCR_CWUF; // clear wkp flags
+#endif
 	SCB->SCR |= SCB_SCR_SLEEPDEEP_Msk;
 	bms_if_sleep();
 	TEMP_MEASURE_OFF();
