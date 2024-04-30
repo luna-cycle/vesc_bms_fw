@@ -91,6 +91,11 @@ void hw_luna_init(void){
 	palSetLineMode(PC12, PAL_MODE_INPUT_ANALOG);
 	palSetLineMode(PD2, PAL_MODE_INPUT_ANALOG);
 
+	uint32_t PWR_status_reg  = (PWR->SR1 & 0x3);
+	if(PWR_status_reg !=0){ // if SR1 bit 0 -> wkp due to load
+		sleep_reset();		// if SR1 bit 1 -> wkp due to charger
+	}
+
 }
 
 float hw_luna_get_cell_temp_max(void) {
