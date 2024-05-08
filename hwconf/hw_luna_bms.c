@@ -221,7 +221,7 @@ static THD_FUNCTION(precharge_thread, arg) {
 
 	while ( !chThdShouldTerminateX() ) {
 
-		if( bq_sc_detected() || bq_oc_detected() || bq_ov_detected() || bq_uv_detected() ){
+		if( bq_sc_detected() || bq_oc_detected() || bq_ov_detected() || bq_uv_detected() || (bms_if_get_bms_state() == BMS_FAULT) ){
 			PRECHARGE_OFF();
 			afe_report_fault = TRUE;
 		}
@@ -366,7 +366,7 @@ static THD_FUNCTION(precharge_thread, arg) {
 			}
 			
 		} else {
-			while( (bms_if_get_bms_state() == BMS_FAULT)  && afe_report_fault) {// the pre charge must not interfiere in the fault handle
+			while( (bms_if_get_bms_state() == BMS_FAULT)  || afe_report_fault) {// the pre charge must not interfiere in the fault handle
 				afe_report_fault = FALSE;
 				PRECHARGE_OFF(); // the precahrge must be off in order to let the AFE to detect for example a short chircuit
 				bq_allow_discharge(true); // let the AFE to decide if connect or not

@@ -271,7 +271,7 @@
 #define PRECHARGE_TEMP_MAX 				60.0 // precharge resistor temp [�C]
 #define PRECHARGE_TEMP_HYST				0.8	// precharge temp hysteresis
 #define PRECHARGE_TIMEOUT               0.1 // precharge time to open discharge [s]
-#define PRECHARGE_OC                    0.3 // precharge max current [A]
+#define PRECHARGE_OC                    0.5 // precharge max current [A]
 #define PRECH_SHUNT                     0.5 // precharge currente shunt [ohm]
 #define PRECHARGE_ON()					palClearLine(PRECHARGE_ENABLE_LINE)
 #define PRECHARGE_OFF()					palSetLine(PRECHARGE_ENABLE_LINE)
