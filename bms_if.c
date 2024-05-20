@@ -437,12 +437,13 @@ static THD_FUNCTION(charge_discharge_thd,p){
 				switch(FAULT_CODE){
 					case FAULT_CODE_VREG_OVERTEMP:
 						HW_PACK_DISCONNECT();
-						if(HW_VREGULATOR_TEMP() < (HW_MAX_VREG_TEMP - HW_HYSTERESIS_TEMP)){
-							allow_temp_Vreg_fault_clear = 1;
-						}else{
+						//if(HW_VREGULATOR_TEMP() < (HW_MAX_VREG_TEMP - HW_HYSTERESIS_TEMP)){
+						//	allow_temp_Vreg_fault_clear = 1;
+						//}else{
 							chThdSleepMilliseconds(500); //give time to the AFE to response to the disconnect request
-							force_sleep(); // force the mcu to sleep to cool down the regulator
-						}
+						//	force_sleep(); // force the mcu to sleep to cool down the regulator
+						//}
+							HW_SHUT_DOWN();
 					break;
 
 					case FAULT_CODE_CELL_OVERTEMP:
