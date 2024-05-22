@@ -193,7 +193,7 @@ float hw_luna_get_connector_temp(){// return the higest temperature between conn
 
 #ifdef USE_PRECHARGE
 float hw_luna_get_precharge_current(){
-	return pwr_get_adc_ch1() * 0.5;
+	return pwr_get_adc_ch1() / PRECH_SHUNT;
 }
 
 enum {
@@ -210,7 +210,6 @@ float precharge_temp = 0.0;
 int PRECHARGE_STATUS = PRECH_IDLE;
 systime_t prech_thresold_time = 0;
 uint16_t precharge_reconnect_timeout = 0;
-uint8_t precharge_reconnect_atempt = 0;
 bool afe_report_fault = 0;
 static THD_FUNCTION(precharge_thread, arg) {
 	(void)arg;
@@ -240,6 +239,7 @@ static THD_FUNCTION(precharge_thread, arg) {
 
 				case PRECH_IDLE:
 					bq_allow_discharge(false);
+					bq_allow_charge(true);
 					if ( precharge_current > PRECHARGE_CURRENT_THRESHOLD && precharge_temp < PRECHARGE_TEMP_MAX ) {
 						prech_thresold_time = chVTGetSystemTimeX();
 						PRECHARGE_STATUS = PRECH_WAIT_DISCHARGE;
@@ -258,6 +258,7 @@ static THD_FUNCTION(precharge_thread, arg) {
 								if ( precharge_current >= PRECHARGE_OC ) {
 									PRECHARGE_STATUS = PRECH_OC_FAULT;
 									bq_allow_discharge(false);
+									bq_allow_charge(false);
 									PRECHARGE_OFF();
 									bms_if_fault_report(FAULT_CODE_PRECH_OC);
 								}
@@ -275,12 +276,12 @@ static THD_FUNCTION(precharge_thread, arg) {
 						if ( precharge_current >= PRECHARGE_OC) {
 								PRECHARGE_STATUS = PRECH_OC_FAULT;
 								bq_allow_discharge(false);
+								bq_allow_charge(false);
 								PRECHARGE_OFF();
 								bms_if_fault_report(FAULT_CODE_PRECH_OC);
 						} else {
 							PRECHARGE_STATUS = PRECH_WAIT_FOR_IDLE;
 							bq_allow_discharge(true);
-							precharge_reconnect_atempt = 0;
 							chThdSleepMilliseconds(300);
 						}
 					} else {
@@ -289,6 +290,14 @@ static THD_FUNCTION(precharge_thread, arg) {
 							bq_allow_discharge(false);
 							PRECHARGE_OFF();
 							bms_if_fault_report(FAULT_CODE_PRECH_OT);
+						}else {
+							if ( precharge_current >= PRECHARGE_OC && UTILS_AGE_S(prech_thresold_time) > INRUSH_TIME) {
+								PRECHARGE_STATUS = PRECH_OC_FAULT;
+								bq_allow_discharge(false);
+								bq_allow_charge(false);
+								PRECHARGE_OFF();
+								bms_if_fault_report(FAULT_CODE_PRECH_OC);
+							}
 						}
 					}
 				break;
@@ -309,6 +318,7 @@ static THD_FUNCTION(precharge_thread, arg) {
 							if ( precharge_current >= PRECHARGE_OC ) {
 								PRECHARGE_STATUS = PRECH_OC_FAULT;
 								bq_allow_discharge(false);
+								bq_allow_charge(false);
 								PRECHARGE_OFF();
 								bms_if_fault_report(FAULT_CODE_PRECH_OC);
 							}
@@ -337,22 +347,13 @@ static THD_FUNCTION(precharge_thread, arg) {
 					for ( precharge_reconnect_timeout = (RECONNECTION_TIMEOUT * 10) ; precharge_reconnect_timeout > 0 ; 
 						precharge_reconnect_timeout-- ) {
 						sleep_reset();
-						chThdSleepMilliseconds(200);
+						chThdSleepMilliseconds(100);
 					}
-
-					PRECHARGE_ON();
-					precharge_reconnect_atempt++;
-					
-					
-					/*if( precharge_reconnect_atempt > 3 ){
-						while( HW_LOAD_DETECTION() ){			// if max attempt reached, wait for load removal. Is considered a
-							sleep_reset();					// critical fault so bms must be stay here until load
-							precharge_reconnect_atempt = 0;	// is removed.
-							chThdSleepMilliseconds(1000);	// if no load detection is implemented, the bms
-															//will continue to attempt connection every RECONNECTION_TIMEOUT
-						}
-					}*/
-					PRECHARGE_STATUS = PRECH_IDLE;
+					if(!HW_LOAD_DETECTION()){ // after time out, if load has been removed
+						PRECHARGE_ON();		  // reconnect precharge and go to IDLE state
+						PRECHARGE_STATUS = PRECH_IDLE;
+						bq_allow_charge(true);
+					}
 
 				break;
 

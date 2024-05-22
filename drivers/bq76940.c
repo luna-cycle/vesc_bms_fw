@@ -80,6 +80,7 @@ typedef struct {
 	bool OV_detected;
 	bool connect_only_charger;
 	bool discharge_allowed;
+	bool charge_allowed;
 	uint8_t re_init_retry;
 	float fault_current_in;
 	float fault_v_min;
@@ -234,7 +235,7 @@ void bq76940_Alert_handler(void) {
 	uint8_t sys_stat = read_reg(BQ_SYS_STAT);
 	float v_aux = 0.0;
 	if(bms_if_get_bms_state() != BMS_FAULT){ // BQ fault flags might be false but BMS_if has hysteresis condition before re connect
-		bq76940->request_connection_pack = true; // by default connect
+		bq76940->request_connection_pack = true; // by default connect.
 	}
 
 	// Report fault codes
@@ -688,7 +689,11 @@ void bq_connect_pack(bool request) {
 			} else {
 				bq_discharge_disable();
 			}
-			bq_charge_enable();
+			if( bq76940->charge_allowed ) { //ask for precharge condition, needed to detect load precece
+				bq_charge_enable();
+			} else {
+				bq_charge_disable();
+			}
 		}
 	} else {
 		bq_discharge_disable();
@@ -882,6 +887,10 @@ void bq_semaphore (void){
 
 void bq_allow_discharge(bool set) {
 	bq76940->discharge_allowed = set;
+}
+
+void bq_allow_charge(bool set) {
+	bq76940->charge_allowed = set;
 }
 
 float bq_get_fault_data_current(void){
