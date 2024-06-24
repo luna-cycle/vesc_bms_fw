@@ -277,6 +277,7 @@
 #define PRECHARGE_OFF()					palSetLine(PRECHARGE_ENABLE_LINE)
 #define INRUSH_TIME                     0.015 // ignore precharge max current for this amount
                                             // of sec to handle the initial current inrush [s]
+#define PREHCARGE_RESISTOR              200 // precharge resistor value[Ohms]
 //current sense settings
 #define I_IN_FILTER_CONST			0.006
 #define I_IN_FILTER_CONST_IC		0.006
@@ -324,5 +325,5 @@ float hw_luna_get_cell_temp_max(void);
 float hw_luna_get_cell_temp_min(void);
 float hw_luna_get_bal_temp (void);
 float hw_luna_get_connector_temp(void);
-
+bool hw_luna_prech_SC_check(float);
 #endif /* HWCONF_HW_LUNA_BMS_H_ */

@@ -196,6 +196,14 @@ float hw_luna_get_precharge_current(){
 	return pwr_get_adc_ch1() / PRECH_SHUNT;
 }
 
+bool hw_luna_prech_SC_check(float prech_current){
+	bool SC_check = 0;
+	float max_allowed = ((bms_if_get_v_tot() / PREHCARGE_RESISTOR) - 0.01);
+	if( prech_current > max_allowed )
+		SC_check = 1;
+	return SC_check;
+}
+
 enum {
 	PRECH_IDLE = 0,
 	PRECH_WAIT_DISCHARGE,
@@ -255,7 +263,7 @@ static THD_FUNCTION(precharge_thread, arg) {
 								PRECHARGE_OFF();
 								bms_if_fault_report(FAULT_CODE_PRECH_OT);
 							} else {
-								if ( precharge_current >= PRECHARGE_OC ) {
+								if ( hw_luna_prech_SC_check(precharge_current) ) {
 									PRECHARGE_STATUS = PRECH_OC_FAULT;
 									bq_allow_discharge(false);
 									bq_allow_charge(false);
@@ -291,7 +299,7 @@ static THD_FUNCTION(precharge_thread, arg) {
 							PRECHARGE_OFF();
 							bms_if_fault_report(FAULT_CODE_PRECH_OT);
 						}else {
-							if ( precharge_current >= PRECHARGE_OC && UTILS_AGE_S(prech_thresold_time) > INRUSH_TIME) {
+							if ( hw_luna_prech_SC_check(precharge_current) && UTILS_AGE_S(prech_thresold_time) > INRUSH_TIME) {
 								PRECHARGE_STATUS = PRECH_OC_FAULT;
 								bq_allow_discharge(false);
 								bq_allow_charge(false);
@@ -315,7 +323,7 @@ static THD_FUNCTION(precharge_thread, arg) {
 							PRECHARGE_OFF();
 							bms_if_fault_report(FAULT_CODE_PRECH_OT);
 						} else {
-							if ( precharge_current >= PRECHARGE_OC ) {
+							if ( hw_luna_prech_SC_check(precharge_current) ) {
 								PRECHARGE_STATUS = PRECH_OC_FAULT;
 								bq_allow_discharge(false);
 								bq_allow_charge(false);
@@ -370,7 +378,6 @@ static THD_FUNCTION(precharge_thread, arg) {
 			while( (bms_if_get_bms_state() == BMS_FAULT)  || afe_report_fault) {// the pre charge must not interfiere in the fault handle
 				afe_report_fault = FALSE;
 				PRECHARGE_OFF(); // the precahrge must be off in order to let the AFE to detect for example a short chircuit
-				bq_allow_discharge(true); // let the AFE to decide if connect or not
 				chThdSleepMilliseconds(300); // let time to the AFE and charge_discharge task to handle the fault
 										// the AFE thread will be executed after 250ms (worst case)
 			}
@@ -384,7 +391,6 @@ static THD_FUNCTION(precharge_thread, arg) {
 			if( (bms_if_get_bms_state() == BMS_DISCHARGIN) || (bms_if_get_bms_state() == BMS_CHARGING) ){
 				PRECHARGE_STATUS = PRECH_WAIT_FOR_IDLE; // when the bms recovers from the fault, return to the wait for discharge state
 			}
-
 
 		}
 	}
