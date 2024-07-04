@@ -192,7 +192,6 @@ bool allow_temp_hw_fault_clear = 1;
 bool allow_temp_Vreg_fault_clear = 1;
 bool allow_OV_fault_clear = 1;
 bool allow_UV_fault_clear = 1;
-uint8_t oc_sc_count_attempt = 0;
 uint8_t oc_charge_count_attempt = 0;
 uint16_t timeout = 0;
 bool charger_connected = false;
@@ -361,16 +360,20 @@ static THD_FUNCTION(charge_discharge_thd,p){
 						if ( flag_I_charge_fault ) {
 							FAULT_CODE = FAULT_CODE_CHARGE_OVERCURRENT;
 						} else {
-							if ( flag_OC_discharge_fault || flag_SC_discharge_fault ) {
+							if ( flag_OC_discharge_fault  ) {
 								FAULT_CODE = FAULT_CODE_DISCHARGE_OVERCURRENT;
 							} else {
-								if ( flag_UV_fault ) {
-									FAULT_CODE = FAULT_CODE_CELL_UNDERVOLTAGE;
+								if (flag_SC_discharge_fault ) {
+									FAULT_CODE = FAULT_CODE_DISCHARGE_SHORT_CIRCUIT;
 								} else {
-									if ( flag_OV_fault ) {
-										FAULT_CODE = FAULT_CODE_CELL_OVERVOLTAGE;
+									if ( flag_UV_fault ) {
+										FAULT_CODE = FAULT_CODE_CELL_UNDERVOLTAGE;
 									} else {
-										FAULT_CODE = FAULT_CODE_NONE;
+										if ( flag_OV_fault ) {
+											FAULT_CODE = FAULT_CODE_CELL_OVERVOLTAGE;
+										} else {
+											FAULT_CODE = FAULT_CODE_NONE;
+										}
 									}
 								}
 							}
@@ -499,16 +502,26 @@ static THD_FUNCTION(charge_discharge_thd,p){
 
 					case FAULT_CODE_DISCHARGE_OVERCURRENT:
 						HW_PACK_DISCONNECT(); // disconnect pack and wait for reconnection time out, at this point the AFE should have disconnected the pack, this is redundant
+						//wait for reconnection timeout
+						for ( timeout = (RECONNECTION_TIMEOUT * 10) ; timeout > 0 ; timeout-- ) {
+							chThdSleepMilliseconds(100);
+							sleep_reset();
+						}
+						HW_SC_OC_RESTORE();
+						HW_PACK_CONNECT();
+
+					break;
+
+					case FAULT_CODE_DISCHARGE_SHORT_CIRCUIT:
+						HW_PACK_DISCONNECT(); // disconnect pack and wait for reconnection time out, at this point the AFE should have disconnected the pack, this is redundant
 						if(HW_LOAD_DETECTION()){			// if max attempt reached, wait for load removal. Is considered a
 							sleep_reset();					// critical fault so bms must be stay here until load is removed.
 							chThdSleepMilliseconds(1000);	// if no load detection is implemented, the bms will continue to attempt connection every RECONNECTION_TIMEOUT
 						} else {
-							flag_OC_discharge_fault = 0;
 							flag_SC_discharge_fault = 0;
 							HW_SC_OC_RESTORE();
 						}	
 					break;
-
 					case FAULT_CODE_CELL_UNDERVOLTAGE:
 						// disconnect load
 						HW_PACK_CONN_ONLY_CHARGE(true);// allow only charging
@@ -928,6 +941,29 @@ static THD_FUNCTION(if_thd, p) {
 				break;
 
 				case FAULT_CODE_DISCHARGE_OVERCURRENT:
+					blink_count++;
+					if( blink_count > 2450) {
+						blink_count = 0;
+					}
+
+					if( blink_count < 1950 ) {
+						blink++;
+						if (blink > 300) {
+							blink = 0;
+						}
+
+						if (blink < 150) {
+							LED_ON(LINE_LED_RED);
+						} else {
+							LED_OFF(LINE_LED_RED);
+						}
+					} else {
+						LED_OFF (LINE_LED_RED);
+						blink = 0;
+					}
+				break;
+
+				case FAULT_CODE_DISCHARGE_SHORT_CIRCUIT:
 					blink_count++;
 					if( blink_count > 2450) {
 						blink_count = 0;
