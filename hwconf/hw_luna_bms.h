@@ -88,7 +88,7 @@
 #define HW_CONNECTOR_TEMP()			hw_luna_get_connector_temp()
 #define HW_VREGULATOR_TEMP()		hw_luna_get_temp(7)
 #define HW_LOAD_DETECTION()			bq_get_load_status()
-#define HW_CHARGER_DETECTION()		1
+#define HW_CHARGER_DETECTED()		1
 #define HW_PACK_CONN_ONLY_CHARGE(request)	bq_connect_only_charger(request)
 #define HW_SC_DETECTED()			bq_sc_detected()
 #define HW_OC_DETECTED()			bq_oc_detected()

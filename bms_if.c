@@ -295,7 +295,6 @@ static THD_FUNCTION(charge_discharge_thd,p){
 		} else {
 			if(current_now < backup.config.max_charge_current){
 				flag_I_charge_fault = 0;
-				oc_charge_count_attempt = 0;
 			}
 		}
 
