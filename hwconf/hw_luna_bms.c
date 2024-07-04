@@ -213,9 +213,18 @@ enum {
 	PRECH_OC_FAULT
 	};
 
+int PRECHARGE_STATUS = PRECH_IDLE;
+
+bool hw_luna_is_prech_fault(){
+	if(PRECHARGE_STATUS == PRECH_TEMP_FAULT || PRECHARGE_STATUS == PRECH_OC_FAULT ) {
+		return 1;
+	} else {
+		return 0;
+	}
+}
+
 float precharge_current = 0.0;
 float precharge_temp = 0.0;
-int PRECHARGE_STATUS = PRECH_IDLE;
 systime_t prech_thresold_time = 0;
 uint16_t precharge_reconnect_timeout = 0;
 bool afe_report_fault = 0;

@@ -845,9 +845,36 @@ static THD_FUNCTION(if_thd, p) {
 #ifdef HW_BIDIRECTIONAL_SWITCH
 
 		if( BMS_state == BMS_FAULT ) {
+
 			switch(FAULT_CODE) {
 
 				case FAULT_CODE_CELL_OVERTEMP:
+				case FAULT_CODE_CELL_UNDERTEMP:
+				case FAULT_CODE_HARDWARE_OVERTEMP:
+					blink_count++;
+					if( blink_count > 650) {
+						blink_count = 0;
+					}
+
+					if( blink_count < 300 ) {
+						blink++;
+						if (blink > 300) {
+							blink = 0;
+						}
+
+						if (blink < 150) {
+							LED_ON(LINE_LED_RED);
+						} else {
+							LED_OFF(LINE_LED_RED);
+						}
+					} else {
+						LED_OFF (LINE_LED_RED);
+						blink = 0;
+					}
+				break;
+
+				case FAULT_CODE_CHARGE_OVERCURRENT:
+				case FAULT_CODE_DISCHARGE_OVERCURRENT:
 					blink_count++;
 					if( blink_count > 1100) {
 						blink_count = 0;
@@ -870,7 +897,7 @@ static THD_FUNCTION(if_thd, p) {
 					}
 				break;
 
-				case FAULT_CODE_CELL_UNDERTEMP:
+				case FAULT_CODE_DISCHARGE_SHORT_CIRCUIT:
 					blink_count++;
 					if( blink_count > 1250) {
 						blink_count = 0;
@@ -893,7 +920,8 @@ static THD_FUNCTION(if_thd, p) {
 					}
 				break;
 
-				case FAULT_CODE_HARDWARE_OVERTEMP:
+				case FAULT_CODE_CELL_UNDERVOLTAGE:
+				case FAULT_CODE_CELL_OVERVOLTAGE:
 					blink_count++;
 					if( blink_count > 1850) {
 						blink_count = 0;
@@ -916,127 +944,10 @@ static THD_FUNCTION(if_thd, p) {
 					}
 				break;
 
-				case FAULT_CODE_CHARGE_OVERCURRENT:
-					blink_count++;
-					if( blink_count > 2150) {
-						blink_count = 0;
-					}
-
-					if( blink_count < 1650 ) {
-						blink++;
-						if (blink > 300) {
-							blink = 0;
-						}
-
-						if (blink < 150) {
-							LED_ON(LINE_LED_RED);
-						} else {
-							LED_OFF(LINE_LED_RED);
-						}
-					} else {
-						LED_OFF (LINE_LED_RED);
-						blink = 0;
-					}
-				break;
-
-				case FAULT_CODE_DISCHARGE_OVERCURRENT:
-					blink_count++;
-					if( blink_count > 2450) {
-						blink_count = 0;
-					}
-
-					if( blink_count < 1950 ) {
-						blink++;
-						if (blink > 300) {
-							blink = 0;
-						}
-
-						if (blink < 150) {
-							LED_ON(LINE_LED_RED);
-						} else {
-							LED_OFF(LINE_LED_RED);
-						}
-					} else {
-						LED_OFF (LINE_LED_RED);
-						blink = 0;
-					}
-				break;
-
-				case FAULT_CODE_DISCHARGE_SHORT_CIRCUIT:
-					blink_count++;
-					if( blink_count > 2450) {
-						blink_count = 0;
-					}
-
-					if( blink_count < 1950 ) {
-						blink++;
-						if (blink > 300) {
-							blink = 0;
-						}
-
-						if (blink < 150) {
-							LED_ON(LINE_LED_RED);
-						} else {
-							LED_OFF(LINE_LED_RED);
-						}
-					} else {
-						LED_OFF (LINE_LED_RED);
-						blink = 0;
-					}
-				break;
-
-				case FAULT_CODE_CELL_UNDERVOLTAGE:
-					blink_count++;
-					if( blink_count > 2750) {
-						blink_count = 0;
-					}
-
-					if( blink_count < 2250 ) {
-						blink++;
-						if (blink > 300) {
-							blink = 0;
-						}
-
-						if (blink < 150) {
-							LED_ON(LINE_LED_RED);
-						} else {
-							LED_OFF(LINE_LED_RED);
-						}
-					} else {
-						LED_OFF (LINE_LED_RED);
-						blink = 0;
-					}
-				break;
-
-				case FAULT_CODE_CELL_OVERVOLTAGE:
-					blink_count++;
-					if( blink_count > 3000) {
-						blink_count = 0;
-					}
-
-					if( blink_count < 2550 ) {
-						blink++;
-						if (blink > 300) {
-							blink = 0;
-						}
-
-						if (blink < 150) {
-							LED_ON(LINE_LED_RED);
-						} else {
-							LED_OFF(LINE_LED_RED);
-						}
-					} else {
-						LED_OFF (LINE_LED_RED);
-						blink = 0;
-					}
-				break;
-
 				default:
 				break;
 
-
 			}
-
 
 #else
 		if (m_was_charge_overcurrent) {
@@ -1059,11 +970,43 @@ static THD_FUNCTION(if_thd, p) {
 			}
 #endif
 		} else {
+#ifdef USE_PRECHARGE
+		if( (HW_IS_PRECH_FAULT() == 1)) {
+			blink_count++;
+			if( blink_count > 1250) {
+				blink_count = 0;
+			}
+
+			if( blink_count < 750 ) {
+				blink++;
+				if (blink > 300) {
+					blink = 0;
+				}
+
+				if (blink < 150) {
+					LED_ON(LINE_LED_RED);
+				} else {
+					LED_OFF(LINE_LED_RED);
+				}
+			} else {
+				LED_OFF (LINE_LED_RED);
+				blink = 0;
+			}
+		} else {
+			blink_count = 0;
 			if (m_is_balancing) {
 				LED_ON(LINE_LED_RED);
 			} else {
 				LED_OFF(LINE_LED_RED);
 			}
+		}	
+#else
+			if (m_is_balancing) {
+				LED_ON(LINE_LED_RED);
+			} else {
+				LED_OFF(LINE_LED_RED);
+			}
+#endif
 		}
 
 		chThdSleepMilliseconds(1);

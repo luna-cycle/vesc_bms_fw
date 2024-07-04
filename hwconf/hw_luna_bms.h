@@ -109,6 +109,7 @@
 #define HW_FAULT_DATA_UV()          bq_get_fault_data_UV()
 #define HW_FAULT_DATA_OV()          bq_get_fault_data_OV()
 #define HW_IS_DSG_EN()              bq_is_dsg_en()
+#define HW_IS_PRECH_FAULT()         hw_luna_is_prech_fault()
 // Settings
 #define HW_ADC_TEMP_SENSORS		8// total temp sensors
 #define HW_MCU_ADC_TEMP_SENSOR	7// temp sensor conencted to the MCU ADC
@@ -326,4 +327,5 @@ float hw_luna_get_cell_temp_min(void);
 float hw_luna_get_bal_temp (void);
 float hw_luna_get_connector_temp(void);
 bool hw_luna_prech_SC_check(float);
+bool hw_luna_is_prech_fault(void);
 #endif /* HWCONF_HW_LUNA_BMS_H_ */
