@@ -219,8 +219,14 @@ uint8_t bq76940_init(void) {
 		} else {
 			bq76940->initialized = false;
 		}
-
+		// init fauls flags
+		bq76940->oc_detected = false;
+		bq76940->sc_detected = false;
+		bq76940->UV_detected = false;
+		bq76940->OV_detected = false;
 	}
+
+	read_cell_voltages(m_v_cell);
 	//init semaphore as taken
 	chBSemObjectInit(&bq_alert_semph, false);
 	chThdCreateStatic(sample_thread_wa, sizeof(sample_thread_wa), NORMALPRIO +2 , sample_thread, NULL);

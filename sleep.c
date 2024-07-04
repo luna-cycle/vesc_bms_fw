@@ -86,7 +86,6 @@ static void go_to_sleep(void) {
 	PWR->SCR |= PWR_SCR_CWUF; // clear wkp flags
 #endif
 #ifdef HW_USE_WKP1
-	PWR->PDCRA|= PWR_PDCRA_PA0; 	// PA0 pull down during sleep
 	PWR->CR4 |= PWR_CR4_WP1;
 	PWR->CR3 |= PWR_CR3_EWUP1;
 	PWR->SCR |= PWR_SCR_CWUF; // clear wkp flags

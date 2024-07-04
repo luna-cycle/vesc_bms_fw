@@ -68,7 +68,7 @@ void hw_luna_init(void){
 #endif
 
 #ifdef HW_USE_WKP1
-	palSetLineMode(PA0, PAL_MODE_INPUT_PULLUP);
+	palSetLineMode(PA0, PAL_MODE_INPUT_PULLDOWN);
 #else
 	palSetLineMode(PA8, PAL_MODE_INPUT_ANALOG);
 #endif
@@ -262,14 +262,6 @@ static THD_FUNCTION(precharge_thread, arg) {
 								bq_allow_discharge(false);
 								PRECHARGE_OFF();
 								bms_if_fault_report(FAULT_CODE_PRECH_OT);
-							} else {
-								if ( hw_luna_prech_SC_check(precharge_current) ) {
-									PRECHARGE_STATUS = PRECH_OC_FAULT;
-									bq_allow_discharge(false);
-									bq_allow_charge(false);
-									PRECHARGE_OFF();
-									bms_if_fault_report(FAULT_CODE_PRECH_OC);
-								}
 							}
 						}
 					}
