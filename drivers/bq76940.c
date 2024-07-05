@@ -258,7 +258,6 @@ void bq76940_Alert_handler(void) {
 	if ( sys_stat & SYS_STAT_UV ) {
 		//bms_if_fault_report(FAULT_CODE_CELL_UNDERVOLTAGE);
 		bq76940->UV_detected = true;
-		bq76940->request_connection_pack = false;
 		read_cell_voltages(m_v_cell);
 
 		// acquire min cell
@@ -689,6 +688,7 @@ void bq_connect_pack(bool request) {
 	if(request) {
 		if( bq76940->connect_only_charger ) {
 			bq_discharge_disable();
+			bq_charge_enable();
 		} else {
 			if( bq76940->discharge_allowed ) { //ask for precharge condition
 				bq_discharge_enable();

@@ -522,9 +522,6 @@ static THD_FUNCTION(charge_discharge_thd,p){
 						}	
 					break;
 					case FAULT_CODE_CELL_UNDERVOLTAGE:
-						// disconnect load
-						HW_PACK_CONN_ONLY_CHARGE(true);// allow only charging
-						HW_PACK_CONNECT();//connect pack, the discharge will be disconnected
 
 						//UV time out
 						if(UTILS_AGE_S(UV_timer) > HW_UV_TIMEOUT){
@@ -532,14 +529,15 @@ static THD_FUNCTION(charge_discharge_thd,p){
 						}
 
 						// check for in current
-						if(current_now > 0.1){// incoming current, pack is charging
+						if(HW_GET_I_IN() > HW_IDLE_CURR_THR_CHG){// incoming current, pack is charging
 							HW_PACK_CONN_ONLY_CHARGE(false);// connect discharge and charge ports
 							HW_PACK_CONNECT();//connect pack
-							} else {
-								if(current_now < -0.1 ){ // out going current, pack is discharging
-									HW_PACK_CONN_ONLY_CHARGE(true);// allow only charging
-									HW_PACK_CONNECT();//connect pack
-							}
+							UV_timer = chVTGetSystemTimeX(); // if charging reset the time out, in order to wait the pack to recover
+							m_is_charging = true;			 // if the min cell is bellow 2.6 but over 2.5, if it´s under 2.5 enter in shut down inmidiately
+						} else {
+							HW_PACK_CONN_ONLY_CHARGE(true);// allow only charging
+							HW_PACK_CONNECT();//connect pack
+							m_is_charging = false;
 						}
 
 						float v_min_aux = 100.0;
@@ -558,7 +556,7 @@ static THD_FUNCTION(charge_discharge_thd,p){
 						}
 
 						if(cell_min > ( HW_MIN_CELL + HW_HYSTEREIS_MIN_CELL) ){
-							for(timeout = (RECONNECTION_TIMEOUT * 100); timeout > 0 ; timeout--){
+							for(timeout = (RECONNECTION_TIMEOUT * 10); timeout > 0 ; timeout--){
 								chThdSleepMilliseconds(100); // wait for time out before reconnect
 								sleep_reset();
 							}
@@ -999,7 +997,7 @@ static THD_FUNCTION(if_thd, p) {
 			} else {
 				LED_OFF(LINE_LED_RED);
 			}
-		}	
+		}
 #else
 			if (m_is_balancing) {
 				LED_ON(LINE_LED_RED);
