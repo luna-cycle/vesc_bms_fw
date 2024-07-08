@@ -747,7 +747,7 @@ static THD_FUNCTION(balance_thd, p) {
 		} else if (t_bal > t_bal_start) {
 			bal_ch_max = utils_map_int(t_bal, t_bal_start, t_bal_end, bal_ch_max, 0);
 		}
-commands_printf("%d",bal_ch_max);
+
 		// Limit number of simultaneous balancing channels by disabling
 		// balancing on the cells with the highest voltage.
 		while (bal_ch > bal_ch_max) {
