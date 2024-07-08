@@ -751,6 +751,14 @@ bool bq_get_dsc(int cell) {
 		return false;
 	}
 
+	return m_discharge_state[cell];
+}
+
+bool bq_get_dsc_sorted(int cell) {
+	if (cell < 0 || cell >= MAX_CELL_NUM) {
+		return false;
+	}
+
 	return m_discharge[cell];
 }
 

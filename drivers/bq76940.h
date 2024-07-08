@@ -172,6 +172,7 @@ typedef enum {
 uint8_t bq76940_init(void);
 void bq_set_dsc(int cell, bool set);
 bool bq_get_dsc(int cell);
+bool bq_get_dsc_sorted(int cell);
 float bq_last_pack_voltage(void);
 float bq_last_cell_voltage(int cell);
 float bq_get_temp(int sensor);

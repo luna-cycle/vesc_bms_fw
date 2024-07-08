@@ -242,7 +242,7 @@ static THD_FUNCTION(charge_discharge_thd,p){
 			bms_if_fault_report(FAULT_CODE_CELL_UNDERTEMP);
 			flag_temp_UT_cell_fault = 1;
 			allow_ut_cell_fault_clear = 0;
-			blink_count = 0;
+			blink_count = 0;blink = 0;
 		} else {
 			if( allow_ut_cell_fault_clear ) {
 				flag_temp_UT_cell_fault = 0;
@@ -265,7 +265,7 @@ static THD_FUNCTION(charge_discharge_thd,p){
 			}
 			flag_temp_OT_cell_fault = 1;
 			allow_ot_cell_fault_clear = 0;
-			blink_count = 0;
+			blink_count = 0;blink = 0;
 		} else {
 			if( allow_ot_cell_fault_clear ) {
 				flag_temp_OT_cell_fault = 0;
@@ -278,7 +278,7 @@ static THD_FUNCTION(charge_discharge_thd,p){
 			bms_if_fault_report(FAULT_CODE_HARDWARE_OVERTEMP);
 			flag_temp_hardware_fault = 1;
 			allow_temp_hw_fault_clear = 0;
-			blink_count = 0;
+			blink_count = 0;blink = 0;
 		} else {
 			if(allow_temp_hw_fault_clear) {
 				flag_temp_hardware_fault = 0;
@@ -291,7 +291,7 @@ static THD_FUNCTION(charge_discharge_thd,p){
 		if ( (current_now > backup.config.max_charge_current) && (flag_I_charge_fault == 0) ) {
 			bms_if_fault_report(FAULT_CODE_CHARGE_OVERCURRENT);
 			flag_I_charge_fault = 1;
-			blink_count = 0;
+			blink_count = 0;blink = 0;
 		} else {
 			if(current_now < backup.config.max_charge_current){
 				flag_I_charge_fault = 0;
@@ -302,7 +302,7 @@ static THD_FUNCTION(charge_discharge_thd,p){
 		if ( HW_SC_DETECTED() && (flag_SC_discharge_fault == 0) ) {
 			bms_if_fault_report(FAULT_CODE_DISCHARGE_SHORT_CIRCUIT);
 			flag_SC_discharge_fault = 1;
-			blink_count = 0;
+			blink_count = 0;blink = 0;
 		} else {
 			flag_SC_discharge_fault = 0;
 		}
@@ -311,7 +311,7 @@ static THD_FUNCTION(charge_discharge_thd,p){
 		if ( HW_OC_DETECTED() && (flag_OC_discharge_fault == 0)) {
 			bms_if_fault_report(FAULT_CODE_DISCHARGE_OVERCURRENT);
 			flag_OC_discharge_fault = 1;
-			blink_count = 0;
+			blink_count = 0;blink = 0;
 		} else {
 			flag_OC_discharge_fault = 0;
 		}
@@ -321,7 +321,7 @@ static THD_FUNCTION(charge_discharge_thd,p){
 			bms_if_fault_report(FAULT_CODE_CELL_UNDERVOLTAGE);
 			allow_UV_fault_clear = 0;
 			flag_UV_fault = 1;
-			blink_count = 0;
+			blink_count = 0;blink = 0;
 			UV_timer = chVTGetSystemTimeX();
 		} else {
 			if( allow_UV_fault_clear == 1 ) {
@@ -335,7 +335,7 @@ static THD_FUNCTION(charge_discharge_thd,p){
 			bms_if_fault_report(FAULT_CODE_CELL_OVERVOLTAGE);
 			flag_OV_fault = 1;
 			allow_OV_fault_clear = 0;
-			blink_count = 0;
+			blink_count = 0;blink = 0;
 		} else {
 			if( allow_OV_fault_clear == 1 ) {
 				flag_OV_fault = 0;
@@ -747,7 +747,7 @@ static THD_FUNCTION(balance_thd, p) {
 		} else if (t_bal > t_bal_start) {
 			bal_ch_max = utils_map_int(t_bal, t_bal_start, t_bal_end, bal_ch_max, 0);
 		}
-
+commands_printf("%d",bal_ch_max);
 		// Limit number of simultaneous balancing channels by disabling
 		// balancing on the cells with the highest voltage.
 		while (bal_ch > bal_ch_max) {
@@ -850,8 +850,8 @@ static THD_FUNCTION(if_thd, p) {
 				case FAULT_CODE_CELL_UNDERTEMP:
 				case FAULT_CODE_HARDWARE_OVERTEMP:
 					blink_count++;
-					if( blink_count > 650) {
-						blink_count = 0;
+					if( blink_count > 600) {
+						blink_count = 0;blink = 0;
 					}
 
 					if( blink_count < 300 ) {
@@ -874,8 +874,8 @@ static THD_FUNCTION(if_thd, p) {
 				case FAULT_CODE_CHARGE_OVERCURRENT:
 				case FAULT_CODE_DISCHARGE_OVERCURRENT:
 					blink_count++;
-					if( blink_count > 1100) {
-						blink_count = 0;
+					if( blink_count > 1200) {
+						blink_count = 0;blink = 0;
 					}
 
 					if( blink_count < 600 ) {
@@ -897,11 +897,11 @@ static THD_FUNCTION(if_thd, p) {
 
 				case FAULT_CODE_DISCHARGE_SHORT_CIRCUIT:
 					blink_count++;
-					if( blink_count > 1250) {
-						blink_count = 0;
+					if( blink_count > 1800) {
+						blink_count = 0;blink = 0;
 					}
 
-					if( blink_count < 750 ) {
+					if( blink_count < 900 ) {
 						blink++;
 						if (blink > 300) {
 							blink = 0;
@@ -921,11 +921,12 @@ static THD_FUNCTION(if_thd, p) {
 				case FAULT_CODE_CELL_UNDERVOLTAGE:
 				case FAULT_CODE_CELL_OVERVOLTAGE:
 					blink_count++;
-					if( blink_count > 1850) {
-						blink_count = 0;
+
+					if( blink_count > 2400) {
+						blink_count = 0;blink = 0;
 					}
 
-					if( blink_count < 1350 ) {
+					if( blink_count < 1200 ) {
 						blink++;
 						if (blink > 300) {
 							blink = 0;
@@ -971,11 +972,11 @@ static THD_FUNCTION(if_thd, p) {
 #ifdef USE_PRECHARGE
 		if( (HW_IS_PRECH_FAULT() == 1)) {
 			blink_count++;
-			if( blink_count > 1250) {
-				blink_count = 0;
+			if( blink_count > 1200) {
+				blink_count = 0;blink = 0;
 			}
 
-			if( blink_count < 750 ) {
+			if( blink_count < 600 ) {
 				blink++;
 				if (blink > 300) {
 					blink = 0;
@@ -1053,7 +1054,7 @@ float bms_if_get_temp_ic(void) {
 }
 
 bool bms_if_is_balancing_cell(int cell) {
-	return HW_GET_DSC(cell);
+	return HW_GET_DSC_SORTED(cell);
 }
 
 double bms_if_get_ah_cnt(void) {

@@ -75,6 +75,7 @@
 #define HW_GET_TEMP_IC()			bq_get_temp_ic()
 #define HW_SET_DSC(cell, set)		bq_set_dsc(cell, set)
 #define HW_GET_DSC(cell)			bq_get_dsc(cell)
+#define HW_GET_DSC_SORTED(cell)     bq_get_dsc_sorted(cell) // returns the cell that are balancing after luna_bms criteria of sorting
 #define HW_LAST_CELL_VOLTAGE(cell)	bq_last_cell_voltage(cell)
 #define HW_GET_V_TOTAL()			bq_last_pack_voltage()
 #define HW_GET_V_CHARGE()			bq_last_pack_voltage()	//until we implement charge voltage measurement in hw
