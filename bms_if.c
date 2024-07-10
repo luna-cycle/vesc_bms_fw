@@ -489,7 +489,7 @@ static THD_FUNCTION(charge_discharge_thd,p){
 							flag_I_charge_fault = 0;
 						} else {
 							//wait for reconnection timeout
-							for ( timeout = (RECONNECTION_TIMEOUT * 100) ; timeout > 0 ; timeout-- ) {
+							for ( timeout = (RECONNECTION_TIMEOUT * 10) ; timeout > 0 ; timeout-- ) {
 								chThdSleepMilliseconds(100);
 								sleep_reset();
 							}
