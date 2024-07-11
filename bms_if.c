@@ -677,8 +677,10 @@ static THD_FUNCTION(balance_thd, p) {
 
 		balance_end = backup.config.vc_balance_end;
 		balance_start = backup.config.vc_balance_start;
-
+		float min_bal_voltage = 0.0;
+		min_bal_voltage = backup.config.vc_balance_min;
 #ifdef HW_BIDIRECTIONAL_SWITCH
+		
 		if (flag_temp_OT_cell_fault || flag_temp_UT_cell_fault || flag_temp_hardware_fault || flag_UV_fault ) { // if any temp fault or UV
 			m_bal_ok = false;																					// force disable balance
 		}else{
@@ -686,6 +688,7 @@ static THD_FUNCTION(balance_thd, p) {
 				m_bal_ok = true;		// if no temp fault and OV fault or max cell above 4.2V force balance
 				balance_end = 0.010;	// config a smaller balance start and end limits to ensure
 				balance_start = 0.015;	// that the balance will be performed
+				min_bal_voltage = 3.5;	
 			}
 		}
 #endif
@@ -716,7 +719,7 @@ static THD_FUNCTION(balance_thd, p) {
 			}
 		}
 
-		if (v_min > backup.config.vc_balance_min &&
+		if (v_min > min_bal_voltage &&
 				m_bal_ok &&
 				!is_balance_override &&
 				fabsf(bms_if_get_i_in_ic()) < backup.config.balance_max_current) {
