@@ -192,6 +192,7 @@ bool allow_temp_hw_fault_clear = 1;
 bool allow_temp_Vreg_fault_clear = 1;
 bool allow_OV_fault_clear = 1;
 bool allow_UV_fault_clear = 1;
+bool allow_SC_fault_clear = 1;
 uint8_t oc_charge_count_attempt = 0;
 uint16_t timeout = 0;
 bool charger_connected = false;
@@ -303,8 +304,10 @@ static THD_FUNCTION(charge_discharge_thd,p){
 			bms_if_fault_report(FAULT_CODE_DISCHARGE_SHORT_CIRCUIT);
 			flag_SC_discharge_fault = 1;
 			blink_count = 0;blink = 0;
+			allow_SC_fault_clear = 0;
 		} else {
-			flag_SC_discharge_fault = 0;
+			if(allow_SC_fault_clear == 1)
+				flag_SC_discharge_fault = 0;
 		}
 
 		// check over current discharge
@@ -517,7 +520,7 @@ static THD_FUNCTION(charge_discharge_thd,p){
 							sleep_reset();					// critical fault so bms must be stay here until load is removed.
 							chThdSleepMilliseconds(1000);	// if no load detection is implemented, the bms will continue to attempt connection every RECONNECTION_TIMEOUT
 						} else {
-							flag_SC_discharge_fault = 0;
+							allow_SC_fault_clear = 1;
 							HW_SC_OC_RESTORE();
 						}	
 					break;
@@ -680,7 +683,7 @@ static THD_FUNCTION(balance_thd, p) {
 		float min_bal_voltage = 0.0;
 		min_bal_voltage = backup.config.vc_balance_min;
 #ifdef HW_BIDIRECTIONAL_SWITCH
-		
+
 		if (flag_temp_OT_cell_fault || flag_temp_UT_cell_fault || flag_temp_hardware_fault || flag_UV_fault ) { // if any temp fault or UV
 			m_bal_ok = false;																					// force disable balance
 		}else{
@@ -688,7 +691,7 @@ static THD_FUNCTION(balance_thd, p) {
 				m_bal_ok = true;		// if no temp fault and OV fault or max cell above 4.2V force balance
 				balance_end = 0.010;	// config a smaller balance start and end limits to ensure
 				balance_start = 0.015;	// that the balance will be performed
-				min_bal_voltage = 3.5;	
+				min_bal_voltage = 3.5;
 			}
 		}
 #endif
