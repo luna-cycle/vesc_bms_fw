@@ -272,14 +272,14 @@
 #define PRECHARGE_CURRENT_THRESHOLD 	0.020 // [A]
 #define PRECHARGE_TEMP_MAX 				60.0 // precharge resistor temp [�C]
 #define PRECHARGE_TEMP_HYST				0.8	// precharge temp hysteresis
-#define PRECHARGE_TIMEOUT               0.1 // precharge time to open discharge [s]
+#define PRECHARGE_TIMEOUT               0.25 // precharge time to open discharge [s]
 #define PRECHARGE_OC                    0.35 // precharge max current [A]
 #define PRECH_SHUNT                     2.0 // precharge currente shunt [ohm]
 #define PRECHARGE_ON()					palClearLine(PRECHARGE_ENABLE_LINE)
 #define PRECHARGE_OFF()					palSetLine(PRECHARGE_ENABLE_LINE)
 #define INRUSH_TIME                     0.015 // ignore precharge max current for this amount
                                             // of sec to handle the initial current inrush [s]
-#define PREHCARGE_RESISTOR              200 // precharge resistor value[Ohms]
+#define PREHCARGE_RESISTOR              195 // precharge resistor value[Ohms]
 //current sense settings
 #define I_IN_FILTER_CONST			0.006
 #define I_IN_FILTER_CONST_IC		0.006
